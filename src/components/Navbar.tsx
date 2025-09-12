@@ -45,7 +45,10 @@ export default function Navbar() {
 
           {/* Desktop Nav */}
           <nav className="hidden md:flex space-x-8 text-gray-700 font-medium">
-            <Link href="/dashboard" className="hover:text-indigo-600">
+          <Link href="/dashboard" className="hover:text-indigo-600">
+              Dashboard
+            </Link>
+            <Link href="/chat" className="hover:text-indigo-600">
               Chat
             </Link>
             <Link href="/nearby" className="hover:text-indigo-600">
@@ -92,8 +95,16 @@ export default function Navbar() {
                   >
                     Sign Out
                   </button>
+
+                  <Link className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100" href={"/profile"}>Profile</Link>
+
+                  <Link className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100" href={"/updateHealth"}>Daily health</Link>
+
+
                 </div>
               )}
+              
+
             </div>
           ) : (
             <Link
@@ -117,8 +128,16 @@ export default function Navbar() {
       {/* Mobile Menu */}
       {mobileOpen && (
         <div className="md:hidden bg-white shadow-md px-6 pb-4 space-y-4">
-          <Link
+
+<Link
             href="/dashboard"
+            className="block text-gray-700 hover:text-indigo-600"
+            onClick={() => setMobileOpen(false)}
+          >
+            Dashboard
+          </Link>
+          <Link
+            href="/chat"
             className="block text-gray-700 hover:text-indigo-600"
             onClick={() => setMobileOpen(false)}
           >

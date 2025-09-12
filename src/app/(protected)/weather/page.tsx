@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { RefreshCw, MapPin, Wind, Droplets, Thermometer, Sun, Activity, Heart, Shield, TrendingUp } from "lucide-react"
+import { RefreshCw, MapPin, Wind, Droplets, Thermometer, Sun, Activity, Heart, Shield, TrendingUp, ChevronLeft } from "lucide-react"
 import {
   XAxis,
   YAxis,
@@ -19,6 +19,7 @@ import {
   Cell,
 } from "recharts"
 import { toast } from "sonner"
+import Link from "next/link"
 
 export default function Home() {
   const [data, setData] = useState<any>(null)
@@ -169,6 +170,7 @@ toast.error("Geolocation is not supported by your browser.")
         
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
+        <Link href={"/dashboard"}><ChevronLeft/></Link>
           <div>
             <h1 className="text-3xl md:text-4xl font-bold text-balance">Health & Environment Monitor</h1>
             <p className="text-muted-foreground mt-1">Real-time health-focused environmental data</p>

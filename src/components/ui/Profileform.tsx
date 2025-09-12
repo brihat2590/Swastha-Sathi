@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner"; // optional for notifications
 
-export default function SettingsPage() {
+export default function Profile() {
   const [user, setUser] = useState<{ userId: string } | null>(null);
   const [formData, setFormData] = useState({
     age: "",
