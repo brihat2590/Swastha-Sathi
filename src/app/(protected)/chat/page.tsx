@@ -110,9 +110,9 @@ export default function ChatInterface() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="flex flex-col min-h-screen  bg-background py-20">
       {/* Header */}
-      <div className="border-b border-border bg-background/95 backdrop-blur sticky top-0 z-50">
+      <div className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-3">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
@@ -129,103 +129,99 @@ export default function ChatInterface() {
       </div>
 
       {/* Chat messages */}
-      <div className="flex-1 overflow-hidden">
-        <div className="max-w-4xl mx-auto h-full flex flex-col">
-          <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex gap-4 ${
-                  message.role === "user" ? "justify-end" : "justify-start"
-                }`}
-              >
-                {message.role === "assistant" && (
-                  <Avatar className="w-8 h-8 shrink-0">
-                    <AvatarFallback className="bg-primary text-primary-foreground">
-                      <Bot className="w-4 h-4" />
-                    </AvatarFallback>
-                  </Avatar>
-                )}
-
-                <div
-                  className={`max-w-[70%] rounded-2xl px-4 py-3 shadow-sm ${
-                    message.role === "user"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-card text-card-foreground border border-border"
-                  }`}
-                >
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                    {message.content}
-                  </p>
-                  <div
-                    className={`text-xs mt-2 ${
-                      message.role === "user"
-                        ? "text-primary-foreground/70"
-                        : "text-muted-foreground"
-                    }`}
-                  >
-                    {message.timestamp.toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </div>
-                </div>
-
-                {message.role === "user" && (
-                  <Avatar className="w-8 h-8 shrink-0">
-                    <AvatarFallback className="bg-secondary text-secondary-foreground">
-                      <User className="w-4 h-4" />
-                    </AvatarFallback>
-                  </Avatar>
-                )}
-              </div>
-            ))}
-
-            {/* Loader / Typing Indicator */}
-            {isLoading && (
-              <div className="flex gap-4 justify-start">
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-4xl mx-auto px-4 py-6 flex flex-col space-y-6">
+          {messages.map((message) => (
+            <div
+              key={message.id}
+              className={`flex gap-4 ${
+                message.role === "user" ? "justify-end" : "justify-start"
+              }`}
+            >
+              {message.role === "assistant" && (
                 <Avatar className="w-8 h-8 shrink-0">
                   <AvatarFallback className="bg-primary text-primary-foreground">
                     <Bot className="w-4 h-4" />
                   </AvatarFallback>
                 </Avatar>
-                <div className="bg-card text-card-foreground border border-border rounded-2xl px-4 py-3 shadow-sm flex items-center gap-2">
-                  <div className="flex gap-1">
-                    <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                    <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                    <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"></div>
-                  </div>
-                  <span className="text-sm text-muted-foreground">Typing...</span>
+              )}
+
+              <div
+                className={`max-w-[70%] rounded-2xl px-4 py-3 shadow-sm ${
+                  message.role === "user"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-card text-card-foreground border border-border"
+                }`}
+              >
+                <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                  {message.content}
+                </p>
+                <div
+                  className={`text-xs mt-2 ${
+                    message.role === "user"
+                      ? "text-primary-foreground/70"
+                      : "text-muted-foreground"
+                  }`}
+                >
+                  {message.timestamp.toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
                 </div>
               </div>
-            )}
 
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* Input box */}
-          <div className="border-t border-border bg-background/95 backdrop-blur">
-            <div className="px-4 py-4 flex gap-3 items-end">
-              <div className="flex-1 relative">
-                <Input
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="Type your message..."
-                  disabled={isLoading}
-                  className="min-h-[44px] pr-12 resize-none bg-input border-border focus:ring-2 focus:ring-ring focus:border-transparent rounded-xl"
-                />
-              </div>
-              <Button
-                onClick={handleSend}
-                disabled={!input.trim() || isLoading}
-                size="sm"
-                className="h-11 w-11 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground"
-              >
-                <Send className="w-4 h-4" />
-              </Button>
+              {message.role === "user" && (
+                <Avatar className="w-8 h-8 shrink-0">
+                  <AvatarFallback className="bg-secondary text-secondary-foreground">
+                    <User className="w-4 h-4" />
+                  </AvatarFallback>
+                </Avatar>
+              )}
             </div>
-          </div>
+          ))}
+
+          {/* Loader / Typing Indicator */}
+          {isLoading && (
+            <div className="flex gap-4 justify-start">
+              <Avatar className="w-8 h-8 shrink-0">
+                <AvatarFallback className="bg-primary text-primary-foreground">
+                  <Bot className="w-4 h-4" />
+                </AvatarFallback>
+              </Avatar>
+              <div className="bg-card text-card-foreground border border-border rounded-2xl px-4 py-3 shadow-sm flex items-center gap-2">
+                <div className="flex gap-1">
+                  <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                  <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                  <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"></div>
+                </div>
+                <span className="text-sm text-muted-foreground">Typing...</span>
+              </div>
+            </div>
+          )}
+
+          <div ref={messagesEndRef} />
+        </div>
+      </div>
+
+      {/* Input box */}
+      <div className="border-t border-border bg-background/95 backdrop-blur">
+        <div className="max-w-4xl mx-auto px-4 py-4 flex gap-3 items-end">
+          <Input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Type your message..."
+            disabled={isLoading}
+            className="min-h-[44px] pr-12 resize-none bg-input border-border focus:ring-2 focus:ring-ring focus:border-transparent rounded-xl flex-1"
+          />
+          <Button
+            onClick={handleSend}
+            disabled={!input.trim() || isLoading}
+            size="sm"
+            className="h-11 w-11 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground"
+          >
+            <Send className="w-4 h-4" />
+          </Button>
         </div>
       </div>
     </div>

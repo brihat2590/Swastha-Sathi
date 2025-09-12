@@ -5,6 +5,9 @@ const nextConfig: NextConfig = {
   eslint:{
     ignoreDuringBuilds:true
   },
+  images:{
+    domains:["*"] // allow all domains
+  }
 };
 
 export default nextConfig;
