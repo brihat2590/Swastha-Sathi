@@ -46,6 +46,9 @@ export default function Navbar() {
           {/* Desktop Nav */}
           <nav className="hidden md:flex space-x-8 text-gray-700 font-medium">
             <Link href="/dashboard" className="hover:text-indigo-600">
+              Dashboard
+            </Link>
+            <Link href="/chat" className="hover:text-indigo-600">
               Chat
             </Link>
             <Link href="/nearby" className="hover:text-indigo-600">
