@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { MapPin, Navigation, Star, Clock, Phone, RefreshCw, Filter, Crosshair, Activity } from "lucide-react";
+import { MapPin, Navigation, Star, Clock, Phone, RefreshCw, Filter, Crosshair, Activity, ChevronLeft } from "lucide-react";
+import Link from "next/link";
 
 interface Facility {
   id: string | number;
@@ -149,6 +150,7 @@ export default function NearbyHealthFacilities() {
       <div className="max-w-6xl mx-auto px-4 py-12">
         {/* Header */}
         <div className="text-center mb-8">
+          <Link href={"/dashboard"}><ChevronLeft/></Link>
           <h1 className="text-4xl font-bold text-gray-800 mb-2 flex items-center justify-center gap-3">
             <Activity className="h-10 w-10 text-blue-600 " />
             Healthcare Finder
