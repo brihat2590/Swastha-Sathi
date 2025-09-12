@@ -48,8 +48,8 @@ export default function Navbar() {
             <Link href="/dashboard" className="hover:text-indigo-600">
               Chat
             </Link>
-            <Link href="/sos" className="hover:text-indigo-600">
-              SOS
+            <Link href="/nearby" className="hover:text-indigo-600">
+              Finder
             </Link>
             <Link href="/weather" className="hover:text-indigo-600">
               Weather
@@ -125,11 +125,11 @@ export default function Navbar() {
             Chat
           </Link>
           <Link
-            href="/sos"
+            href="/nearby"
             className="block text-gray-700 hover:text-indigo-600"
             onClick={() => setMobileOpen(false)}
           >
-            SOS
+            Finder
           </Link>
           <Link
             href="/weather"

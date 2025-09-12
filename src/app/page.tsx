@@ -9,7 +9,7 @@ export default function page(){
     <>
     <LandingPage/>
     <Features/>
-    <PricingSection/>
+    
     <Footer/>
     
     
