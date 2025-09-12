@@ -16,7 +16,7 @@ const ProtectedLayout = ({ children }: { children: ReactNode }) => {
     // Handle redirect when user is not authenticated
     useEffect(() => {
         if (!isPending && !session && !error) {
-            router.push('/login')
+            router.push('/sign-in')
         }
     }, [isPending, session, error, router])
 
