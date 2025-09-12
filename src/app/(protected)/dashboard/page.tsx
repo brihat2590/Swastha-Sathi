@@ -1,8 +1,7 @@
 "use client"
 import { authClient } from '@/lib/auth-client'
 import React from 'react'
-import HealthStatusPage from '@/components/ui/HealthStatusform'
-import Profileform from '@/components/ui/Profileform'
+
 
 const Dashboard = () => {
 
@@ -15,8 +14,7 @@ const Dashboard = () => {
 
             <button onClick={signoutHandler}>logout</button>
 
-            <Profileform/>
-            <HealthStatusPage/>
+            
         </div>
     )
 }
