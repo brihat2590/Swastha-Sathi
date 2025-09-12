@@ -9,7 +9,7 @@ const Dashboard = () => {
     }
 
     return (
-        <div>This is the user Dashboard
+        <div className='pt-16'>This is the user Dashboard
 
             <button onClick={signoutHandler}>logout</button>
         </div>
