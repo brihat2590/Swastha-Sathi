@@ -26,7 +26,7 @@ model User {
   weightKg   Float? // Weight in kilograms
   gender     String? // e.g., "male", "female", "other"
   bloodGroup String? // e.g., "A+", "O-", etc.
-  allergies  String[] @default([]) // List of allergies
+  allergies  String? //  allergies
 
   dailyHealthRecords DailyHealthRecord[]
 
