@@ -13,19 +13,52 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
 model User {
-  id            String    @id
+  id            String  @id
   name          String
   email         String
-  emailVerified Boolean   @default(false)
+  emailVerified Boolean @default(false)
   image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @default(now()) @updatedAt
-  sessions      Session[]
-  accounts      Account[]
+
+  age        Int?
+  heightCm   Float? // Height in centimeters
+  weightKg   Float? // Weight in kilograms
+  gender     String? // e.g., "male", "female", "other"
+  bloodGroup String? // e.g., "A+", "O-", etc.
+  allergies  String[] @default([]) // List of allergies
+
+  dailyHealthRecords DailyHealthRecord[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @default(now()) @updatedAt
+  sessions  Session[]
+  accounts  Account[]
 
   @@unique([email])
   @@map("user")
+}
+
+model DailyHealthRecord {
+  id     String   @id @default(uuid())
+  userId String
+  user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date   DateTime @default(now())
+
+  // Diet and health tracking fields
+  proteinIntake  Float? // grams
+  carbIntake     Float? // grams
+  fatIntake      Float? // grams
+  caloriesIntake Float? // kcal
+  caloriesBurnt  Float? // kcal
+  sleepHours     Float? // hours
+  waterIntake    Float? // liters
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  @@unique([userId, date])
+  @@map("daily_health_record")
 }
 
 model Session {
