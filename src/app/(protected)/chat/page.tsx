@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Mic } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Send, Bot, User, Sparkles } from "lucide-react";
 
@@ -18,6 +19,9 @@ const normalizeText = (text: string) =>
   text.replace(/\*\*/g, "").replace(/\n{2,}/g, "\n\n").trim();
 
 export default function ChatInterface() {
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
+
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
@@ -32,6 +36,47 @@ export default function ChatInterface() {
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  // Setup SpeechRecognition API
+  useEffect(() => {
+    if (typeof window !== "undefined" && ("webkitSpeechRecognition" in window || "SpeechRecognition" in window)) {
+      // @ts-ignore
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = false;
+      recognitionRef.current.interimResults = false;
+      recognitionRef.current.lang = "en-US";
+
+      recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
+        const transcript = event.results[0][0].transcript;
+        // Only set input if user says "ok" at the start
+        if (/^ok\b/i.test(transcript.trim())) {
+          setInput(transcript.replace(/^ok\b[\s,]*/i, ""));
+        } else {
+          setInput(transcript);
+        }
+        setIsListening(false);
+      };
+
+      recognitionRef.current.onerror = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current.onend = () => {
+        setIsListening(false);
+      };
+    }
+  }, []);
+
+  const handleMicClick = () => {
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+    } else {
+      setIsListening(true);
+      recognitionRef.current?.start();
+    }
   };
 
   useEffect(() => {
@@ -135,9 +180,8 @@ export default function ChatInterface() {
             {messages.map((message) => (
               <div
                 key={message.id}
-                className={`flex gap-4 ${
-                  message.role === "user" ? "justify-end" : "justify-start"
-                }`}
+                className={`flex gap-4 ${message.role === "user" ? "justify-end" : "justify-start"
+                  }`}
               >
                 {message.role === "assistant" && (
                   <Avatar className="w-8 h-8 shrink-0">
@@ -148,21 +192,19 @@ export default function ChatInterface() {
                 )}
 
                 <div
-                  className={`max-w-[70%] rounded-2xl px-4 py-3 shadow-sm ${
-                    message.role === "user"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-card text-card-foreground border border-border"
-                  }`}
+                  className={`max-w-[70%] rounded-2xl px-4 py-3 shadow-sm ${message.role === "user"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-card text-card-foreground border border-border"
+                    }`}
                 >
                   <p className="text-sm leading-relaxed whitespace-pre-wrap">
                     {message.content}
                   </p>
                   <div
-                    className={`text-xs mt-2 ${
-                      message.role === "user"
-                        ? "text-primary-foreground/70"
-                        : "text-muted-foreground"
-                    }`}
+                    className={`text-xs mt-2 ${message.role === "user"
+                      ? "text-primary-foreground/70"
+                      : "text-muted-foreground"
+                      }`}
                   >
                     {message.timestamp.toLocaleTimeString([], {
                       hour: "2-digit",
@@ -215,6 +257,26 @@ export default function ChatInterface() {
                   disabled={isLoading}
                   className="min-h-[44px] pr-12 resize-none bg-input border-border focus:ring-2 focus:ring-ring focus:border-transparent rounded-xl"
                 />
+                {/* Mic Icon Button */}
+                <button
+                  type="button"
+                  onClick={handleMicClick}
+                  disabled={isLoading}
+                  aria-label={isListening ? "Listening..." : "Speak"}
+                  className={`absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full transition-colors ${
+                    isListening
+                      ? "bg-primary text-primary-foreground animate-pulse"
+                      : "bg-muted text-muted-foreground hover:bg-primary/20"
+                  }`}
+                  style={{ outline: "none", border: "none" }}
+                >
+                  <Mic className="w-5 h-5" />
+                </button>
+                {isListening && (
+                  <span className="absolute left-2 -top-6 text-xs text-primary animate-pulse">
+                    Listening... say "ok" to start
+                  </span>
+                )}
               </div>
               <Button
                 onClick={handleSend}
