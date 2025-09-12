@@ -1,4 +1,5 @@
 "use client"
+import CenteredLoader from '@/components/ui/CenteredLoader'
 import { authClient } from '@/lib/auth-client'
 import { useRouter } from 'next/navigation'
 import React, { ReactNode, useEffect } from 'react'
@@ -21,7 +22,7 @@ const ProtectedLayout = ({ children }: { children: ReactNode }) => {
     }, [isPending, session, error, router])
 
     // Show loading state
-    if (isPending) return <div>Loading...</div>
+    if (isPending) return <div><CenteredLoader label='Please wait loading'></CenteredLoader></div>
     
     // Show error state but don't redirect (might be temporary network issue)
     if (error) return <div>Error: {error.message}</div>

@@ -18,6 +18,7 @@ import {
   Pie,
   Cell,
 } from "recharts"
+import { toast } from "sonner"
 
 export default function Home() {
   const [data, setData] = useState<any>(null)
@@ -41,7 +42,7 @@ export default function Home() {
         setRefreshing(false)
       })
     } else {
-      alert("Geolocation is not supported by your browser.")
+toast.error("Geolocation is not supported by your browser.")
       setLoading(false)
       setRefreshing(false)
     }
