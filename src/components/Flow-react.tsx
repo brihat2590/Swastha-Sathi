@@ -96,7 +96,7 @@ export default function HealthFlowPage() {
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
   const onConnect = useCallback(
-    (params: Edge | Connection) => setEdges((eds) => addEdge(params, eds)),
+    (params: Edge | Connection) => setEdges((eds:any) => addEdge(params, eds)),
     [setEdges]
   );
 

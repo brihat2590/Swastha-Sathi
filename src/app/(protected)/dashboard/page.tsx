@@ -103,5 +103,6 @@ export default function DashboardPage() {
     )
   }
 
-  return <HealthDashboard data={dashboardData} />
+  
+  return <HealthDashboard data={{ ...dashboardData, last7DaysRecords: dashboardData.dailyRecords || [] }} />
 }
