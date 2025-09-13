@@ -1,21 +1,21 @@
-// app/api/nearby/route.ts
 import { NextRequest, NextResponse } from "next/server";
+import axios from "axios";
 
 // --- Reverse Geocode using Nominatim ---
 async function reverseGeocode(lat: number, lon: number) {
   try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`,
-      {
-        headers: {
-          "User-Agent": "HealthcareFinder/1.0 (contact@example.com)", // required by Nominatim
-        },
-        cache: "no-store",
-      }
-    );
+    const res = await axios.get("https://nominatim.openstreetmap.org/reverse", {
+      params: {
+        lat,
+        lon,
+        format: "json",
+      },
+      headers: {
+        "User-Agent": "HealthcareFinder/1.0 (contact@example.com)", // required
+      },
+    });
 
-    if (!res.ok) return null;
-    const data = await res.json();
+    const data = res.data;
 
     return {
       city:
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Get user's location info (city/state for top of UI)
+    // Get user's location info (city/state)
     const location = await reverseGeocode(lat, lon);
 
     // Define facility type filters
@@ -78,26 +78,22 @@ export async function POST(req: NextRequest) {
     const query = `
       [out:json];
       (
-        node["amenity"~"${amenityFilter}"](around:20000,${lat},${lon});
-        way["amenity"~"${amenityFilter}"](around:20000,${lat},${lon});
-        relation["amenity"~"${amenityFilter}"](around:20000,${lat},${lon});
+        node["amenity"~"${amenityFilter}"](around:30000,${lat},${lon});
+        way["amenity"~"${amenityFilter}"](around:30000,${lat},${lon});
+        relation["amenity"~"${amenityFilter}"](around:30000,${lat},${lon});
       );
       out center;
     `;
 
-    const response = await fetch("https://overpass-api.de/api/interpreter", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: query,
-    });
+    const response = await axios.post(
+      "https://overpass-api.de/api/interpreter",
+      query,
+      {
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      }
+    );
 
-    if (!response.ok) {
-      throw new Error("Failed to fetch from Overpass API");
-    }
-
-    const data = await response.json();
-
-    const elements = data.elements
+    const elements = response.data.elements
       .map((el: any) => {
         if (el.type === "node") {
           return { id: el.id, lat: el.lat, lon: el.lon, tags: el.tags || {} };
@@ -116,6 +112,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ elements, location });
   } catch (err: any) {
+    console.error("Nearby API failed:", err.message);
     return NextResponse.json(
       { error: err.message || "Unknown error" },
       { status: 500 }
