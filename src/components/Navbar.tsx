@@ -45,15 +45,14 @@ export default function Navbar() {
 
           {/* Desktop Nav */}
           <nav className="hidden md:flex space-x-8 text-gray-700 font-medium">
-<<<<<<< HEAD
-            <Link href="/dashboard" className="hover:text-indigo-600">
-=======
           <Link href="/dashboard" className="hover:text-indigo-600">
->>>>>>> 771d5cdc81110829dee2997d432a861c90d9586a
               Dashboard
             </Link>
             <Link href="/chat" className="hover:text-indigo-600">
               Chat
+            </Link>
+            <Link href="/custom" className="hover:text-indigo-600">
+              Plans
             </Link>
             <Link href="/nearby" className="hover:text-indigo-600">
               Finder
