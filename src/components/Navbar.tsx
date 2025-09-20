@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
@@ -13,6 +13,29 @@ export default function Navbar() {
     image?: string;
   } | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setDropdownOpen(false);
+      }
+    }
+
+    if (dropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    } else {
+      document.removeEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [dropdownOpen]);
 
   useEffect(() => {
     const getSession = async () => {
@@ -45,8 +68,7 @@ export default function Navbar() {
 
           {/* Desktop Nav */}
           <nav className="hidden md:flex space-x-8 text-gray-700 font-medium">
-           
-          <Link href="/dashboard" className="hover:text-indigo-600">
+            <Link href="/dashboard" className="hover:text-indigo-600">
               Dashboard
             </Link>
             <Link href="/chat" className="hover:text-indigo-600">
@@ -66,16 +88,18 @@ export default function Navbar() {
 
         {/* Right Nav */}
         <div className="flex items-center space-x-6 relative">
-          {!user&&<Link
-            href="/contact"
-            className="hidden md:inline text-gray-700 hover:text-indigo-600"
-          >
-            Contact sales
-          </Link>}
+          {!user && (
+            <Link
+              href="/contact"
+              className="hidden md:inline text-gray-700 hover:text-indigo-600"
+            >
+              Contact sales
+            </Link>
+          )}
 
           {/* If logged in → show user photo OR initial */}
           {user ? (
-            <div className="relative">
+            <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setDropdownOpen(!dropdownOpen)}
                 className="focus:outline-none flex items-center justify-center h-10 w-10 rounded-full border bg-gray-100 text-gray-700 font-semibold"
@@ -94,21 +118,35 @@ export default function Navbar() {
               {dropdownOpen && (
                 <div className="absolute right-0 mt-2 w-40 bg-white border rounded-md shadow-lg py-2 z-50">
                   <button
-                    onClick={handleSignOut}
+                    onClick={()=>{
+                      handleSignOut
+                    setDropdownOpen(false)}}
                     className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
                   >
                     Sign Out
                   </button>
 
-                  <Link className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100" href={"/profile"}>Profile</Link>
+                  <Link
+                    className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
+                    href={"/profile"}
+                    onClick={()=>{
+                      setDropdownOpen(false)
+                    }}
+                  >
+                    Profile
+                  </Link>
 
-                  <Link className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100" href={"/updateHealth"}>Daily health</Link>
-
-
+                  <Link
+                    className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
+                    href={"/updateHealth"}
+                    onClick={()=>{
+                      setDropdownOpen(false)
+                    }}
+                  >
+                    Daily health
+                  </Link>
                 </div>
               )}
-              
-
             </div>
           ) : (
             <Link
@@ -132,8 +170,7 @@ export default function Navbar() {
       {/* Mobile Menu */}
       {mobileOpen && (
         <div className="md:hidden bg-white shadow-md px-6 pb-4 space-y-4">
-
-<Link
+          <Link
             href="/dashboard"
             className="block text-gray-700 hover:text-indigo-600"
             onClick={() => setMobileOpen(false)}
@@ -161,13 +198,15 @@ export default function Navbar() {
           >
             Weather
           </Link>
-          {!user&&<Link
-            href="/contact"
-            className="block text-gray-700 hover:text-indigo-600"
-            onClick={() => setMobileOpen(false)}
-          >
-            Contact sales
-          </Link>}
+          {!user && (
+            <Link
+              href="/contact"
+              className="block text-gray-700 hover:text-indigo-600"
+              onClick={() => setMobileOpen(false)}
+            >
+              Contact sales
+            </Link>
+          )}
         </div>
       )}
     </header>

@@ -18,8 +18,8 @@ export const metadata: Metadata = {
   title: "Swastha Sathi",
   description: "Swastha Sathi is an ai based heathcare app",
   icons:{
-    icon:"/favicon.ico"
-  }
+    icon:"synergy.svg"
+  } 
 };
 
 export default function RootLayout({
