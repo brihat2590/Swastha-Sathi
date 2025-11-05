@@ -7,6 +7,7 @@ import { Mic } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Send, Bot, User, Sparkles } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
+import TypingLoader from "@/components/blurLoader";
 
 interface Message {
   id: string;
@@ -152,26 +153,29 @@ export default function ChatInterface() {
   };
 
   return (
-    <div className=" flex flex-col pt-10  max-w-7xl mx-auto">
+    <div className="border border-gray-800 ">
+    <div className=" flex flex-col pt-10 md:pt-20 lg:pt-25  max-w-7xl mx-auto  ">
       {/* Navbar */}
-      <div className=" top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
+      <div className=" top-0 z-50  border-border bg-background/95 backdrop-blur">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-primary-foreground" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-semibold text-foreground">
+          <div className="flex items-center ">
+            
+            <div className="flex items-center justify-center ">
+              {/* <h1 className="text-2xl font-semibold text-foreground">
                 AI Health Assistant
               </h1>
               <p className="text-sm text-muted-foreground">Always here to help</p>
+
+              <p>How can i help you {user?.name}</p> */}
+
+              <h1 className="text-5xl font-sans text-center ">How can i help you {user?.name}</h1>
             </div>
           </div>
         </div>
       </div>
 
       {/* Chat container with spacing below navbar */}
-      <div className="flex-1 overflow-y-auto mt-4 px-4">
+      <div className="flex-1 overflow-y-auto mt-4 px-4 py-2">
         <div className="max-w-4xl mx-auto flex flex-col space-y-6 pb-24">
           {messages.map((message) => (
             <div
@@ -204,9 +208,16 @@ export default function ChatInterface() {
                   {user?.image ? (
       <img src={user.image} alt={user.name || "User"} className="w-full h-full rounded-full" />
     ) : (
-      <AvatarFallback className="bg-secondary text-secondary-foreground">
-        <User className="w-4 h-4" />
-      </AvatarFallback>
+      // <AvatarFallback className="bg-secondary text-secondary-foreground">
+      //   <User className="w-4 h-4" />
+      // </AvatarFallback>
+      
+
+      <div>
+        <TypingLoader/>
+
+        
+      </div>
     )}
                 </Avatar>
               )}
@@ -215,19 +226,7 @@ export default function ChatInterface() {
 
           {isLoading && (
             <div className="flex gap-4 justify-start">
-              <Avatar className="w-8 h-8 shrink-0">
-                <AvatarFallback className="bg-primary text-primary-foreground">
-                  <Bot className="w-4 h-4" />
-                </AvatarFallback>
-              </Avatar>
-              <div className="bg-card text-card-foreground border border-border rounded-2xl px-4 py-3 shadow-sm flex items-center gap-2">
-                <div className="flex gap-1">
-                  <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                  <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                  <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"></div>
-                </div>
-                <span className="text-sm text-muted-foreground">Typing...</span>
-              </div>
+              loading...
             </div>
           )}
 
@@ -236,7 +235,7 @@ export default function ChatInterface() {
       </div>
 
       {/* Input */}
-      <div className="border-t border-border bg-background/95 backdrop-blur fixed bottom-0 left-0 right-0 px-4 py-4">
+      <div className="border-t border  bg-background/95 backdrop-blur   px-4 py-4">
         <div className="max-w-4xl mx-auto flex gap-3 items-end">
           <div className="flex-1 relative">
             <Input
@@ -275,6 +274,7 @@ export default function ChatInterface() {
           </Button>
         </div>
       </div>
+    </div>
     </div>
   );
 }

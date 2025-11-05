@@ -47,11 +47,10 @@ export default function Features() {
             Features
           </h3>
           <h2 className="mt-4 text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight text-gray-900 sm:text-5xl text-balance">
-            How Synergy Share empowers your team
+            Empower Your Health
           </h2>
           <p className="mt-6 text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-            Synergy Share provides a comprehensive platform for modern teams to collaborate efficiently,
-            manage projects seamlessly, and achieve more together.
+            Swastha sathi is your to go comprehensive platform for all the health related issues. 
           </p>
         </div>
 

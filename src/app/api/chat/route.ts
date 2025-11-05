@@ -3,6 +3,7 @@ import { generateText } from "ai";
 import { google } from "@ai-sdk/google";
 import { auth } from "@/lib/auth";
 
+
 // Helper to fetch user context from your own API
 async function fetchUserContext(userId: string) {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";

@@ -46,6 +46,7 @@ export default function Navbar() {
           email: session.data.user.email,
           image: session.data.user.image || undefined,
         });
+        // console.log("the image is ", session.data.user.image);
       }
     };
     getSession();
