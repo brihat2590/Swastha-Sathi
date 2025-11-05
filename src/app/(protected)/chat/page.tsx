@@ -3,11 +3,14 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Mic } from "lucide-react";
+import { Code, LeafyGreen, Mic } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {motion} from "framer-motion"
 import { Send, Bot, User, Sparkles } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import TypingLoader from "@/components/blurLoader";
+import { TbAlienFilled } from "react-icons/tb";
+import SuggestionBar from "@/components/suggestionBar";
 
 interface Message {
   id: string;
@@ -31,6 +34,23 @@ export default function ChatInterface() {
       timestamp: new Date(),
     },
   ]);
+  const heroTitle = [
+    {
+      id: 0,
+      icon: <Sparkles />,
+      title: "Create",
+    },
+    {
+      id: 1,
+      icon: <Code />,
+      title: "Explore",
+    },
+    {
+      id: 2,
+      icon: <LeafyGreen />,
+      title: "Learn",
+    },
+  ];
   const [input, setInput] = useState("");
   const [user, setUser] = useState<{
     name?: string;
@@ -56,7 +76,6 @@ export default function ChatInterface() {
     };
     getSession();
   }, []);
-  
 
   useEffect(() => {
     if (typeof window !== "undefined" && ("webkitSpeechRecognition" in window || "SpeechRecognition" in window)) {
@@ -153,128 +172,131 @@ export default function ChatInterface() {
   };
 
   return (
-    <div className="border border-gray-800 ">
-    <div className=" flex flex-col pt-10 md:pt-20 lg:pt-25  max-w-7xl mx-auto  ">
-      {/* Navbar */}
-      <div className=" top-0 z-50  border-border bg-background/95 backdrop-blur">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-3">
-          <div className="flex items-center ">
-            
-            <div className="flex items-center justify-center ">
-              {/* <h1 className="text-2xl font-semibold text-foreground">
-                AI Health Assistant
+    <div className="min-h-screen bg-white">
+      <div className="flex flex-col pt-10 md:pt-20 lg:pt-24 max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="top-0 z-50 bg-white">
+          <div className="max-w-4xl mx-auto px-4 py-6">
+            <div className="text-center">
+              <h1 className="text-4xl md:text-5xl font-semibold text-gray-900 mb-6">
+                How can I help you{user?.name ? `, ${user.name}` : ""}?
               </h1>
-              <p className="text-sm text-muted-foreground">Always here to help</p>
 
-              <p>How can i help you {user?.name}</p> */}
-
-              <h1 className="text-5xl font-sans text-center ">How can i help you {user?.name}</h1>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Chat container with spacing below navbar */}
-      <div className="flex-1 overflow-y-auto mt-4 px-4 py-2">
-        <div className="max-w-4xl mx-auto flex flex-col space-y-6 pb-24">
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex gap-4 ${message.role === "user" ? "justify-end" : "justify-start"}`}
-            >
-              {message.role === "assistant" && (
-                <Avatar className="w-8 h-8 shrink-0">
-                  <AvatarFallback className="bg-primary text-primary-foreground">
-                    <Bot className="w-4 h-4" />
-                  </AvatarFallback>
-                </Avatar>
-              )}
-
-              <div
-                className={`max-w-[70%] rounded-2xl px-4 py-3 shadow-sm ${
-                  message.role === "user"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-card text-card-foreground border border-border"
-                }`}
-              >
-                <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
-                <div className={`text-xs mt-2 ${message.role === "user" ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
-                  {message.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                </div>
+              <div className="flex items-center justify-center gap-4 md:gap-8   rounded-2xl py-6 px-4 ">
+                {heroTitle.map((item) => {
+                  return (
+                    <div key={item.id} className="flex flex-col items-center gap-2">
+                      <div className="bg-gradient-to-br bg-white text-purple-800 rounded-xl p-3 shadow-md">
+                        {item.icon}
+                      </div>
+                      <span className="text-sm font-medium text-gray-700">{item.title}</span>
+                    </div>
+                  );
+                })}
               </div>
+            </div>
+          </div>
+        </div>
 
-              {message.role === "user" && (
-                <Avatar className="w-8 h-8 shrink-0">
-                  {user?.image ? (
-      <img src={user.image} alt={user.name || "User"} className="w-full h-full rounded-full" />
-    ) : (
-      // <AvatarFallback className="bg-secondary text-secondary-foreground">
-      //   <User className="w-4 h-4" />
-      // </AvatarFallback>
-      
+        {/* Chat container */}
+        <div className="flex-1 overflow-y-auto mt-8 px-4 py-2">
+          <div className="max-w-4xl mx-auto flex flex-col space-y-6 pb-32">
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                className={`flex gap-3 ${message.role === "user" ? "justify-end" : "justify-start"}`}
+              >
+                {message.role === "assistant" && (
+                  <div className="w-10 h-10 shrink-0 rounded-full bg-white flex items-center justify-center text-black text-xl shadow-md">
+                    <TbAlienFilled />
+                  </div>
+                )}
 
-      <div>
-        <TypingLoader/>
+                <div
+                  className={`max-w-[70%] rounded-2xl px-5 py-3.5 shadow-sm ${
+                    message.role === "user"
+                      ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white"
+                      : "bg-gray-50 max-w-[85%] text-gray-900 border border-gray-200"
+                  }`}
+                >
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                  <div
+                    className={`text-xs mt-2 ${
+                      message.role === "user" ? "text-blue-100" : "text-gray-500"
+                    }`}
+                  >
+                    {message.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  </div>
+                </div>
 
-        
-      </div>
-    )}
-                </Avatar>
+                {message.role === "user" && (
+                  <div className="w-10 h-10 shrink-0">
+                    {user?.image ? (
+                      <img
+                        src={user.image}
+                        alt={user.name || "User"}
+                        className="w-full h-full rounded-full object-cover shadow-md"
+                      />
+                    ) : (
+                      <div className="w-full h-full rounded-full bg-gradient-to-br from-gray-400 to-gray-500 flex items-center justify-center text-white shadow-md">
+                        <User className="w-5 h-5" />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+
+            
+
+            <div ref={messagesEndRef} />
+          </div>
+        </div>
+        <SuggestionBar onSelect={(text) => setInput(text)} />
+
+        {/* Input */}
+        <div className="  left-0 right-0 bg-white   px-4 py-4 ">
+          <div className="max-w-4xl mx-auto flex gap-3 items-end">
+            <div className="flex-1 relative">
+              <Input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Type your message..."
+                disabled={isLoading}
+                className="min-h-[52px] pr-14 resize-none bg-gray-50 border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent rounded-2xl text-gray-900 placeholder:text-gray-400 "
+              />
+              <button
+                type="button"
+                onClick={handleMicClick}
+                disabled={isLoading}
+                aria-label={isListening ? "Listening..." : "Speak"}
+                className={`absolute right-3 top-1/2 -translate-y-1/2 p-2.5 rounded-xl transition-all ${
+                  isListening
+                    ? "bg-blue-500 text-white animate-pulse shadow-md"
+                    : "bg-gray-200 text-gray-600 hover:bg-gray-300"
+                }`}
+                style={{ outline: "none", border: "none" }}
+              >
+                <Mic className="w-5 h-5" />
+              </button>
+              {isListening && (
+                <span className="absolute left-3 -top-7 text-xs text-blue-600 font-medium animate-pulse">
+                  Listening... say "ok" to start
+                </span>
               )}
             </div>
-          ))}
-
-          {isLoading && (
-            <div className="flex gap-4 justify-start">
-              loading...
-            </div>
-          )}
-
-          <div ref={messagesEndRef} />
-        </div>
-      </div>
-
-      {/* Input */}
-      <div className="border-t border  bg-background/95 backdrop-blur   px-4 py-4">
-        <div className="max-w-4xl mx-auto flex gap-3 items-end">
-          <div className="flex-1 relative">
-            <Input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Type your message..."
-              disabled={isLoading}
-              className="min-h-[44px] pr-12 resize-none bg-input border-border focus:ring-2 focus:ring-ring focus:border-transparent rounded-xl"
-            />
-            <button
-              type="button"
-              onClick={handleMicClick}
-              disabled={isLoading}
-              aria-label={isListening ? "Listening..." : "Speak"}
-              className={`absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full transition-colors ${
-                isListening ? "bg-primary text-primary-foreground animate-pulse" : "bg-muted text-muted-foreground hover:bg-primary/20"
-              }`}
-              style={{ outline: "none", border: "none" }}
+            <Button
+              onClick={handleSend}
+              disabled={!input.trim() || isLoading}
+              size="sm"
+              className="h-[52px] w-[52px] rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
-              <Mic className="w-5 h-5" />
-            </button>
-            {isListening && (
-              <span className="absolute left-2 -top-6 text-xs text-primary animate-pulse">
-                Listening... say "ok" to start
-              </span>
-            )}
+              <Send className="w-5 h-5" />
+            </Button>
           </div>
-          <Button
-            onClick={handleSend}
-            disabled={!input.trim() || isLoading}
-            size="sm"
-            className="h-11 w-11 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground"
-          >
-            <Send className="w-4 h-4" />
-          </Button>
         </div>
       </div>
-    </div>
     </div>
   );
 }
