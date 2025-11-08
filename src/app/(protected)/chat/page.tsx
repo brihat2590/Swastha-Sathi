@@ -222,9 +222,9 @@ export default function ChatInterface() {
 
   return (
     <div className=" bg-white">
-      <div className="flex flex-col pt-4 sm:pt-8 md:pt-16 max-w-7xl mx-auto px-2 sm:px-4    ">
+      <div className="flex min-h-screen flex-col pt-4 sm:pt-8 md:pt-16 max-w-7xl mx-auto px-2 sm:px-6    ">
         {/* Header */}
-        <div className="top-0 z-50 bg-white">
+        <div className="top-0  bg-white">
           <div className="max-w-3xl mx-auto px-3 sm:px-4 py-3 sm:py-6">
             <div className="text-center">
               <motion.h1
