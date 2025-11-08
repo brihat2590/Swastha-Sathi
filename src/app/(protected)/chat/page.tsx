@@ -221,11 +221,11 @@ export default function ChatInterface() {
   };
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="flex flex-col pt-10 md:pt-20 lg:pt-24 max-w-7xl mx-auto">
+    <div className=" bg-white">
+      <div className="flex flex-col pt-4 sm:pt-8 md:pt-16 max-w-7xl mx-auto px-2 sm:px-4    ">
         {/* Header */}
         <div className="top-0 z-50 bg-white">
-          <div className="max-w-4xl mx-auto px-4 py-6">
+          <div className="max-w-3xl mx-auto px-3 sm:px-4 py-3 sm:py-6">
             <div className="text-center">
               <motion.h1
                 initial={{ opacity: 0, y: 12 }}
@@ -284,7 +284,7 @@ export default function ChatInterface() {
                   )}
 
                   <div
-                    className={`group relative max-w-[70%] rounded-2xl px-5 py-3 mt-6  shadow-sm ${
+                    className={`group relative max-w-[70%] sm:max-w-[75%] md:max-w-[65%] rounded-2xl px-5 py-3 mt-6  shadow-sm ${
                       message.role === "user"
                         ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white"
                         : "bg-gray-50 text-gray-900 border border-gray-200"
