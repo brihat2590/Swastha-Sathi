@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
+import { useAppSelector,useAppDispatch } from "@/lib/redux/hooks";
 
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -13,6 +14,9 @@ export default function Navbar() {
     image?: string;
   } | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  
+  
 
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -65,6 +69,7 @@ export default function Navbar() {
         <div className="flex items-center space-x-10">
           <Link href={"/"}>
             <img src={"/synergy.svg"} alt="Logo" className="h-10 w-auto" />
+            
           </Link>
 
           {/* Desktop Nav */}

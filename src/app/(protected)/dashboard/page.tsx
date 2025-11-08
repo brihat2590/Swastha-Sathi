@@ -41,7 +41,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const URL = `http://localhost:3000/api/v1/dashboard`
+        const URL = `/api/v1/dashboard`
         const response = await fetch(URL)
 
         if (!response.ok) {

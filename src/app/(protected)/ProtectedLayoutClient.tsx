@@ -4,6 +4,7 @@ import { useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { authClient } from '@/lib/auth-client';
 import CenteredLoader from '@/components/ui/CenteredLoader';
+import Navbar from '@/components/Navbar';
 
 export default function ProtectedLayoutClient({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -19,5 +20,8 @@ export default function ProtectedLayoutClient({ children }: { children: ReactNod
   if (error) return <div>Error: {error.message}</div>;
   if (!session) return <CenteredLoader label="Redirecting to login. Please wait" />;
 
-  return <>{children}</>;
+  return <>
+  
+  
+  {children}</>;
 }
