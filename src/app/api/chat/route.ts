@@ -3,65 +3,97 @@ import { generateText } from "ai";
 import { google } from "@ai-sdk/google";
 import { auth } from "@/lib/auth";
 import { mem0Client } from "@/lib/mem0";
-
-// Helper to fetch user context
-async function fetchUserContext(userId: string) {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-  const res = await fetch(`${baseUrl}/api/v1/getUserContext/${userId}`);
-  if (!res.ok) throw new Error("Failed to fetch user context");
-  return res.json();
-}
+import { getUserContext } from "@/lib/actions/getUserContext";
+import { getCachedUserContext,setCachedUserContext } from "@/lib/cache/userContextCache";
 
 export async function POST(req: NextRequest) {
   try {
-    const { message, history } = await req.json();
-    if(!mem0Client){
-      return NextResponse.json({ response: "Memory client not initialized" }, { status: 500 });
-    }
+    const { message, history = [] } = await req.json();
 
-    // ✅ Validate input
     if (!message) {
-      return NextResponse.json({ response: "Message is required" }, { status: 400 });
+      return NextResponse.json(
+        { response: "Message is required" },
+        { status: 400 }
+      );
     }
 
-    // ✅ Get session (ONLY THIS)
+    if (!mem0Client) {
+      return NextResponse.json(
+        { response: "Memory client not initialized" },
+        { status: 500 }
+      );
+    }
+
+    // ✅ Auth
     const session = await auth.api.getSession({
       headers: req.headers,
     });
 
     if (!session?.user) {
-      return NextResponse.json({ response: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        { response: "Unauthorized" },
+        { status: 401 }
+      );
     }
 
     const userId = session.user.id;
 
-    // ✅ Get memory
-    const memories = await mem0Client.search(message, {
-      user_id: userId,
-      limit: 5,
-    });
-
-    const memoryContext = memories
-      ?.map((m: any) => m.memory || m.content || "")
-      .join("\n");
-
-    // ✅ Fetch extra user context
-    let userContextText = "";
-    try {
-      const userContext = await fetchUserContext(userId);
-      userContextText = `User Context:\n${JSON.stringify(userContext)}\n`;
-    } catch (err) {
-      console.warn("User context fetch failed");
+    // 🚀 PARALLEL EXECUTION (BIG WIN)
+    const [memories, cachedContext] = await Promise.all([
+      mem0Client.search(message, {
+        user_id: userId,
+        limit: 5,
+      }),
+      Promise.resolve(getCachedUserContext(userId)), // fast lookup
+    ]);
+    
+    let userContext = cachedContext;
+    
+    // 🔥 Only fetch from DB if NOT in cache
+    if (!userContext) {
+      try {
+        userContext = await getUserContext(userId);
+    
+        // ✅ store in cache
+        setCachedUserContext(userId, userContext);
+      } catch (err) {
+        console.warn("User context fetch failed");
+        userContext = null;
+      }
     }
 
-    // ✅ Build FINAL prompt (single source of truth)
+    // ✅ Lightweight memory
+    const memoryContext =
+      memories?.map((m: any) => m.memory || m.content || "").join("\n") || "";
+
+    // ✅ OPTIMIZED user context (NO JSON.stringify)
+    const userContextText = userContext
+      ? `User Profile:
+- Age: ${userContext.age}
+- Weight: ${userContext.weightKg}kg
+- Height: ${userContext.heightCm}cm
+- Calories: ${userContext.caloriesIntake}
+- Burnt: ${userContext.caloriesBurnt}
+- Sleep: ${userContext.sleepHours}h
+- Water: ${userContext.waterIntake}L
+- Allergies: ${userContext.allergies || "None"}`
+      : "";
+
+    // ✅ LIMIT history (VERY IMPORTANT)
+    const trimmedHistory = history.slice(-4);
+
+    const historyText = trimmedHistory
+      .map((m: any) => `${m.role}: ${m.content}`)
+      .join("\n");
+
+    // ✅ SHORT + EFFICIENT PROMPT
     const prompt = `
-You are JivanMitra AI, a helpful health assistant.
+You are  Health AI, a health assistant.
 
 Rules:
-- Give safe, practical advice
 - Be concise
-- Be friendly
+- Give actionable advice
+- Avoid long explanations
 
 ${userContextText}
 
@@ -69,12 +101,12 @@ Memory:
 ${memoryContext}
 
 Conversation:
-${(history || []).map((m: any) => `${m.role}: ${m.content}`).join("\n")}
+${historyText}
 
 User: ${message}
 `;
 
-    // ✅ Gemini call
+    // 🚀 AI CALL
     const { text } = await generateText({
       model: google("gemini-2.5-flash"),
       prompt,
@@ -82,19 +114,23 @@ User: ${message}
 
     const reply = text.trim();
 
-    // ✅ Store memory
-    await mem0Client.add(
-      [
-        { role: "user", content: message },
-        { role: "assistant", content: reply },
-      ],
-      { user_id: userId }
-    );
+    // ⚡ NON-BLOCKING MEMORY WRITE
+    mem0Client
+      .add(
+        [
+          { role: "user", content: message },
+          { role: "assistant", content: reply },
+        ],
+        { user_id: userId }
+      )
+      .catch(console.error);
 
+    // ✅ FAST RESPONSE
     return NextResponse.json({ response: reply });
 
   } catch (error) {
     console.error("Chat API Error:", error);
+
     return NextResponse.json(
       { response: "Sorry, something went wrong." },
       { status: 500 }

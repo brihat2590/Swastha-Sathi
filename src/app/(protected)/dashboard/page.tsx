@@ -30,7 +30,7 @@ interface DailyRecord {
 
 interface DashboardData {
   user: UserData
-  dailyRecords: DailyRecord[]
+  last7DaysRecords: DailyRecord[]
 }
 
 export default function DashboardPage() {
@@ -43,12 +43,14 @@ export default function DashboardPage() {
       try {
         const URL = `/api/v1/dashboard`
         const response = await fetch(URL)
+        
 
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`)
         }
 
         const data = await response.json()
+        console.log("this is the data from dashboard",data)
         setDashboardData(data)
       } catch (err) {
         setError(err instanceof Error ? err.message : "An error occurred")
@@ -104,5 +106,5 @@ export default function DashboardPage() {
   }
 
   
-  return <HealthDashboard data={{ ...dashboardData, last7DaysRecords: dashboardData.dailyRecords || [] }} />
+   return <HealthDashboard data={dashboardData} />
 }

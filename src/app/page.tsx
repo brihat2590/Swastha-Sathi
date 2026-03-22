@@ -1,5 +1,6 @@
 "use client";
 
+import Footer from "@/components/Footer";
 import { motion, type Variants } from "motion/react";
 const features = [
   {
@@ -161,6 +162,7 @@ export default function Page() {
     </div>
   </motion.div>
 </section>
+<Footer/>
     </section>
   );
 }

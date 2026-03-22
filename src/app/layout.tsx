@@ -38,7 +38,7 @@ export default function RootLayout({
         {/* main grows to fill available space */}
         <main className="flex-1 pt-16">{children}</main>
         <Toaster position="top-right" richColors />
-        <Footer />
+        
       </body>
     </html>
   );

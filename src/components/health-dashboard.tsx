@@ -41,7 +41,21 @@ interface HealthDashboardProps {
 
 export function HealthDashboard({ data }: HealthDashboardProps) {
     const userData = data.user
-    const dailyData = data.last7DaysRecords[0] || {} // Use most recent record
+     // Use most recent record
+     const sortedRecords = [...data.last7DaysRecords].sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      )
+      
+      const dailyData = sortedRecords[0] ?? {
+        proteinIntake: 0,
+        carbIntake: 0,
+        fatIntake: 0,
+        caloriesIntake: 0,
+        caloriesBurnt: 0,
+        sleepHours: 0,
+        waterIntake: 0,
+        healthScore: 0,
+      }
 
     const last7DaysHealthScores = data.last7DaysRecords
         .slice(0, 7)
