@@ -1,37 +1,70 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Swastha-Sathi (Health Companion) 🏥✨
 
-## Getting Started
+Swastha-Sathi is an AI-powered health companion built with Next.js answering various health inquiries, managing your health data, finding nearby medical facilities, and providing context-aware AI interactions.
 
-First, run the development server:
+## 🌟 Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- **Personalized AI Health Assistant:** Powered by LangChain, OpenAI, Google GenAI, and `mem0ai` for intelligent, memory-augmented interactions.
+- **Interactive Health Maps:** Find local clinics, hospitals, and pharmacies integrating `react-leaflet`.
+- **Secure Authentication:** `better-auth` combined with PostgreSQL and Prisma for secure user state management and data privacy.
+- **Beautiful & Accessible UI:** Crafted with Tailwind CSS, Framer Motion, and Radix UI primitives.
+- **Data Dashboard:** Real-time health metrics visualized with Recharts.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🛠️ Technology Stack
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **Framework:** [Next.js](https://nextjs.org/) (App Router)
+- **Language:** TypeScript
+- **Database ORM:** [Prisma](https://www.prisma.io/) with PostgreSQL Adapter
+- **AI Tooling:**  AI SDK, 
+- **Authentication:** Better Auth
+- **Styling:** Tailwind CSS & Framer Motion
+- **Maps:** Leaflet via React Leaflet
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🚀 Getting Started
 
-## Learn More
+### Prerequisites
 
-To learn more about Next.js, take a look at the following resources:
+Ensure you have Node.js (v18+) and your preferred package manager installed (`npm`, `yarn`, `pnpm`, or `bun`). You will also need a PostgreSQL database instance and API keys for OpenAI/Google GenAI.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Installation
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. Clone the repository and navigate into the project directory:
+   ```bash
+   git clone <repository-url>
+   cd Swastha-Sathi
+   ```
 
-## Deploy on Vercel
+2. Install the dependencies:
+   ```bash
+   npm install
+   # or yarn install, pnpm install
+   ```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+3. Setup Environment Variables:
+   Copy the example environment file:
+   ```bash
+   cp .env.example .env
+   ```
+   *Fill in your database connection string, AI provider keys, and other required environment variables.*
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-# Shikshya-swastha
+4. Initialize the Database:
+   ```bash
+   npx prisma generate
+   npx prisma db push
+   ```
+
+5. Run the Development Server:
+   ```bash
+   npm run dev
+   # or yarn dev, pnpm dev
+   ```
+
+Open [http://localhost:3000](http://localhost:3000) in your browser to view the application.
+
+## 🤝 Contributing
+
+Contributions are always welcome! Feel free to open an issue or submit a pull request if you have ideas on how to improve Swastha-Sathi.
+
+## 📜 License
+
+This project is open-sourced under the MIT License - see the [LICENSE](LICENSE) file for details.
