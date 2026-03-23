@@ -11,10 +11,15 @@ import {
   ArrowDown,
   Plus,
   MessageSquare,
+  Trash,
+  AlertCircle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { authClient } from "@/lib/auth-client";
+import { toast } from "sonner";
+import ReactMarkdown from "react-markdown";
 
+/* ---------- Types ---------- */
 interface Message {
   id: string;
   content: string;
@@ -38,19 +43,15 @@ interface ApiMessage {
   createdAt: string;
 }
 
-const normalizeText = (text: string) =>
-  text.replace(/\*\*/g, "").replace(/\n{2,}/g, "\n\n").trim();
-
-const generateChatTitle = (text: string): string => {
-  const cleaned = text
+/* ---------- Helpers ---------- */
+const generateChatTitle = (text: string): string =>
+  text
     .replace(/[*#`\n]/g, " ")
     .trim()
     .split(/\s+/)
     .slice(0, 8)
-    .join(" ");
-
-  return cleaned.substring(0, 50) || "New chat";
-};
+    .join(" ")
+    .substring(0, 50) || "New chat";
 
 const getInitialMessage = (): Message => ({
   id: `init-${Date.now()}`,
@@ -59,61 +60,131 @@ const getInitialMessage = (): Message => ({
   timestamp: new Date(),
 });
 
-function ThinkingDots() {
-  return (
-    <div className="flex items-center gap-2 py-2">
-      <div className="flex gap-1.5">
-        <motion.div
-          animate={{ y: [0, -8, 0] }}
-          transition={{ duration: 0.6, repeat: Infinity, ease: "easeInOut" }}
-          className="h-2 w-2 rounded-full bg-gray-400"
-        />
-        <motion.div
-          animate={{ y: [0, -8, 0] }}
-          transition={{ duration: 0.6, repeat: Infinity, ease: "easeInOut", delay: 0.1 }}
-          className="h-2 w-2 rounded-full bg-gray-400"
-        />
-        <motion.div
-          animate={{ y: [0, -8, 0] }}
-          transition={{ duration: 0.6, repeat: Infinity, ease: "easeInOut", delay: 0.2 }}
-          className="h-2 w-2 rounded-full bg-gray-400"
-        />
-      </div>
-      <span className="text-xs text-gray-500">Thinking...</span>
-    </div>
-  );
-}
+// CHANGED: Now returns exact time (e.g., 10:45 AM)
+const formatTime = (date: Date): string => {
+  return date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+};
 
-function StreamCursor() {
-  return <span className="stream-cursor" />;
-}
+/* ---------- UI Bits ---------- */
+const ThinkingDots = () => (
+  <div className="flex items-center gap-2 py-2 opacity-50">
+    {[0, 0.08, 0.16].map((delay) => (
+      <motion.div
+        key={delay}
+        animate={{ y: [0, -5, 0] }}
+        transition={{ duration: 0.6, repeat: Infinity, ease: "easeInOut", delay }}
+        className="h-2 w-2 rounded-full bg-gray-500"
+      />
+    ))}
+  </div>
+);
+
+const StreamCursor = () => <span className="stream-cursor" />;
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
-
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setTimeout(() => setCopied(false), 1600);
     } catch {
-      // no-op
+      /* no-op */
     }
   };
-
   return (
-    <button onClick={handleCopy} className="msg-action-btn" title="Copy" aria-label="Copy">
-      {copied ? (
-        <Check className="h-3.5 w-3.5 text-green-500" />
-      ) : (
-        <Copy className="h-3.5 w-3.5" />
-      )}
+    <button
+      onClick={handleCopy}
+      className="msg-action-btn"
+      title="Copy"
+      aria-label="Copy message"
+    >
+      {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
     </button>
   );
 }
 
+function DeleteConfirmationModal({
+  isOpen,
+  chatTitle,
+  onConfirm,
+  onCancel,
+  isDeleting,
+}: {
+  isOpen: boolean;
+  chatTitle: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+  isDeleting: boolean;
+}) {
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          <motion.button
+            aria-label="Close delete dialog"
+            className="fixed inset-0 z-50 bg-white/60 backdrop-blur-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onCancel}
+          />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: 10 }}
+            transition={{ duration: 0.18 }}
+            className="fixed left-1/2 top-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white p-6 shadow-2xl ring-1 ring-gray-900/5"
+          >
+            <div className="mb-4 flex items-start gap-3">
+              <div className="rounded-full bg-red-50 p-2">
+                <AlertCircle className="h-5 w-5 text-red-600" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Delete chat?</h2>
+                <p className="mt-1 text-sm text-gray-500">
+                  This will permanently delete "{chatTitle}".
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={onCancel}
+                disabled={isDeleting}
+                className="flex-1 rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={onConfirm}
+                disabled={isDeleting}
+                className="flex-1 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 flex items-center justify-center gap-2"
+              >
+                {isDeleting ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+}
+
+const LoadingOverlay = () => (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-white">
+    <div className="flex flex-col items-center gap-4">
+      <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-200 border-t-blue-600" />
+    </div>
+  </div>
+);
+
 const formatChatLabel = (chat: ChatSession) => chat.title?.trim() || "New chat";
 
+/* ---------- Main Component ---------- */
 export default function ChatInterface() {
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<any | null>(null);
@@ -130,6 +201,19 @@ export default function ChatInterface() {
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [isLoadingChats, setIsLoadingChats] = useState(false);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    isOpen: boolean;
+    chatId: string | null;
+    chatTitle: string;
+    isDeleting: boolean;
+  }>({
+    isOpen: false,
+    chatId: null,
+    chatTitle: "",
+    isDeleting: false,
+  });
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -137,19 +221,21 @@ export default function ChatInterface() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const userScrolledUpRef = useRef(false);
 
-  const scrollToBottom = useCallback((force = false) => {
-    if (!force && userScrolledUpRef.current) return;
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  // CHANGED: Improved scroll logic for smoothness
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
+    if (userScrolledUpRef.current) return;
+    messagesEndRef.current?.scrollIntoView({ behavior, block: "end" });
   }, []);
 
-  const handleScroll = () => {
-    const el = scrollContainerRef.current;
-    if (!el) return;
-
-    const dist = el.scrollHeight - el.scrollTop - el.clientHeight;
-    userScrolledUpRef.current = dist > 120;
-    setShowScrollBtn(dist > 200);
-  };
+  const handleScroll = useCallback(() => {
+    if (!scrollContainerRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
+    const isAtBottom = Math.abs(scrollHeight - clientHeight - scrollTop) < 50;
+    
+    // Update user scroll state
+    userScrolledUpRef.current = !isAtBottom;
+    setShowScrollBtn(!isAtBottom && messages.length > 2);
+  }, [messages.length]);
 
   const fetchChats = useCallback(async () => {
     try {
@@ -167,30 +253,35 @@ export default function ChatInterface() {
     }
   }, []);
 
-  const loadChatMessages = useCallback(async (chatId: string) => {
-    try {
-      setIsLoadingMessages(true);
-      setErrorMsg(null);
-      const res = await fetch(`/api/chat/${chatId}`);
-      if (!res.ok) throw new Error("Failed to load messages");
-      const data = (await res.json()) as ApiMessage[];
-      const mapped: Message[] = data.map((msg) => ({
-        id: msg.id,
-        content: msg.content,
-        role: msg.role === "USER" ? "user" : "assistant",
-        timestamp: new Date(msg.createdAt),
-      }));
-      setMessages(mapped.length > 0 ? mapped : [getInitialMessage()]);
-      setActiveChatId(chatId);
-      userScrolledUpRef.current = false;
-      requestAnimationFrame(() => scrollToBottom(true));
-    } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : "Failed to load messages");
-    } finally {
-      setIsLoadingMessages(false);
-    }
-  }, [scrollToBottom]);
+  const loadChatMessages = useCallback(
+    async (chatId: string) => {
+      try {
+        setIsLoadingMessages(true);
+        setErrorMsg(null);
+        const res = await fetch(`/api/chat/${chatId}`);
+        if (!res.ok) throw new Error("Failed to load messages");
+        const data = (await res.json()) as ApiMessage[];
+        const mapped: Message[] = data.map((msg) => ({
+          id: msg.id,
+          content: msg.content,
+          role: msg.role === "USER" ? "user" : "assistant",
+          timestamp: new Date(msg.createdAt),
+        }));
+        setMessages(mapped.length > 0 ? mapped : [getInitialMessage()]);
+        setActiveChatId(chatId);
+        localStorage.setItem("activeChatId", chatId);
+        userScrolledUpRef.current = false;
+        requestAnimationFrame(() => scrollToBottom("auto"));
+      } catch (err) {
+        setErrorMsg(err instanceof Error ? err.message : "Failed to load messages");
+      } finally {
+        setIsLoadingMessages(false);
+      }
+    },
+    [scrollToBottom]
+  );
 
+  /* ---------- Init ---------- */
   useEffect(() => {
     (async () => {
       const session = await authClient.getSession();
@@ -201,16 +292,21 @@ export default function ChatInterface() {
           image: session.data.user.image || undefined,
         });
       }
-      await fetchChats();
+
+      const chatsData = await fetchChats();
+      const savedChatId = localStorage.getItem("activeChatId");
+      if (savedChatId && chatsData.some((c) => c.id === savedChatId)) {
+        await loadChatMessages(savedChatId);
+      }
+
+      setIsHydrated(true);
     })();
-  }, [fetchChats]);
+  }, [fetchChats, loadChatMessages]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (!("webkitSpeechRecognition" in window || "SpeechRecognition" in window)) return;
-
-    // @ts-ignore browser speech api
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     const rec = new SR();
     rec.continuous = false;
     rec.interimResults = false;
@@ -225,14 +321,16 @@ export default function ChatInterface() {
     recognitionRef.current = rec;
   }, []);
 
+  // Initial scroll on message change
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, scrollToBottom]);
+    scrollToBottom("smooth");
+  }, [messages.length, scrollToBottom]);
 
   useEffect(() => {
     inputRef.current?.focus();
   }, [activeChatId]);
 
+  /* ---------- Handlers ---------- */
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
     e.target.style.height = "auto";
@@ -246,7 +344,6 @@ export default function ChatInterface() {
       setIsListening(false);
       return;
     }
-
     try {
       recognitionRef.current.start();
       setIsListening(true);
@@ -257,32 +354,56 @@ export default function ChatInterface() {
 
   const createNewChat = async () => {
     if (isLoading || isLoadingMessages) return;
-
     try {
       setErrorMsg(null);
       const res = await fetch("/api/chat/new", { method: "POST" });
       if (!res.ok) throw new Error("Failed to create chat");
       const chat = (await res.json()) as ChatSession;
-
       setChats((prev) => [chat, ...prev]);
       setActiveChatId(chat.id);
+      localStorage.setItem("activeChatId", chat.id);
       setMessages([getInitialMessage()]);
       setInput("");
       userScrolledUpRef.current = false;
-      requestAnimationFrame(() => scrollToBottom(true));
+      requestAnimationFrame(() => scrollToBottom("auto"));
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : "Failed to create chat");
     }
   };
 
+  const openDeleteConfirm = (chatId: string, chatTitle: string) =>
+    setDeleteConfirm({ isOpen: true, chatId, chatTitle, isDeleting: false });
+
+  const closeDeleteConfirm = () =>
+    setDeleteConfirm({ isOpen: false, chatId: null, chatTitle: "", isDeleting: false });
+
+  const confirmDelete = async () => {
+    if (!deleteConfirm.chatId) return;
+    setDeleteConfirm((p) => ({ ...p, isDeleting: true }));
+    try {
+      const res = await fetch(`/api/chat/${deleteConfirm.chatId}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to delete chat");
+
+      setChats((prev) => prev.filter((c) => c.id !== deleteConfirm.chatId));
+      if (activeChatId === deleteConfirm.chatId) {
+        setActiveChatId(null);
+        localStorage.removeItem("activeChatId");
+        setMessages([getInitialMessage()]);
+      }
+      toast.success("Chat deleted");
+      closeDeleteConfirm();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete chat");
+      setDeleteConfirm((p) => ({ ...p, isDeleting: false }));
+    }
+  };
+
   const streamFromServer = async (userMessage: Message, assistantId: string, chatId: string) => {
     abortRef.current = new AbortController();
-
     try {
       setErrorMsg(null);
-      setMessages((prev) =>
-        prev.map((m) => (m.id === assistantId ? { ...m, isStreaming: true } : m))
-      );
+      setMessages((prev) => prev.map((m) => (m.id === assistantId ? { ...m, isStreaming: true } : m)));
 
       const response = await fetch(`/api/chat/${chatId}`, {
         method: "POST",
@@ -290,29 +411,25 @@ export default function ChatInterface() {
         body: JSON.stringify({ message: userMessage.content }),
         signal: abortRef.current.signal,
       });
-
       if (!response.ok) throw new Error("Network error");
 
       const data = await response.json();
-      const full = normalizeText(data?.response ?? "Sorry, no response received.");
+      const full = data?.response ?? "Sorry, no response received.";
       let displayed = "";
 
       for (const char of full) {
         if (abortRef.current?.signal.aborted) break;
         displayed += char;
         setMessages((prev) =>
-          prev.map((m) =>
-            m.id === assistantId ? { ...m, content: displayed, isStreaming: true } : m
-          )
+          prev.map((m) => (m.id === assistantId ? { ...m, content: displayed, isStreaming: true } : m))
         );
-        if (!userScrolledUpRef.current) messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-        await new Promise((r) => setTimeout(r, 10));
+        // CHANGED: Use auto behavior for streaming to prevent jitter
+        if (!userScrolledUpRef.current) scrollToBottom("auto");
+        await new Promise((r) => setTimeout(r, 6)); // Slightly faster typing
       }
 
       setMessages((prev) =>
-        prev.map((m) =>
-          m.id === assistantId ? { ...m, content: displayed, isStreaming: false } : m
-        )
+        prev.map((m) => (m.id === assistantId ? { ...m, content: displayed, isStreaming: false } : m))
       );
 
       await fetchChats();
@@ -321,20 +438,13 @@ export default function ChatInterface() {
         setMessages((prev) =>
           prev.map((m) =>
             m.id === assistantId
-              ? {
-                  ...m,
-                  content: "Sorry, I'm having trouble responding.",
-                  error: true,
-                  isStreaming: false,
-                }
+              ? { ...m, content: "Sorry, I’m having trouble responding.", error: true, isStreaming: false }
               : m
           )
         );
         setErrorMsg(err?.message || "Failed to get response.");
       } else {
-        setMessages((prev) =>
-          prev.map((m) => (m.id === assistantId ? { ...m, isStreaming: false } : m))
-        );
+        setMessages((prev) => prev.map((m) => (m.id === assistantId ? { ...m, isStreaming: false } : m)));
       }
     } finally {
       setIsLoading(false);
@@ -366,18 +476,9 @@ export default function ChatInterface() {
         isStreaming: true,
       };
 
-      // Generate and save title on first message
       if (messages.length <= 1) {
         const title = generateChatTitle(text);
-
-        // Update local state immediately
-        setChats((prev) =>
-          prev.map((chat) =>
-            chat.id === activeChatId ? { ...chat, title } : chat
-          )
-        );
-
-        // Persist to backend using PUT
+        setChats((prev) => prev.map((chat) => (chat.id === activeChatId ? { ...chat, title } : chat)));
         fetch(`/api/chat/${activeChatId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -394,19 +495,12 @@ export default function ChatInterface() {
   );
 
   const handleSend = () => sendMessage(input);
-
-  const handleResend = (content: string) => {
-    if (isLoading || !activeChatId) return;
-    sendMessage(content);
-  };
-
+  const handleResend = (content: string) => !isLoading && activeChatId && sendMessage(content);
   const retryLast = () => {
     const last = [...messages].reverse().find((m) => m.role === "user");
     if (last) handleResend(last.content);
   };
-
   const handleStop = () => abortRef.current?.abort();
-
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -416,282 +510,307 @@ export default function ChatInterface() {
 
   const showHero = messages.length <= 1;
 
+  if (!isHydrated) return <LoadingOverlay />;
+
+  /* ---------- UI ---------- */
   return (
     <>
       <style>{`
-        .stream-cursor { display:inline-block; width:2px; height:1em; background:#111; margin-left:1px; vertical-align:text-bottom; animation:blink .65s step-end infinite; }
+        .stream-cursor { display:inline-block; width:6px; height:15px; background:#000; margin-left:2px; vertical-align:middle; border-radius: 1px; animation:blink .9s step-end infinite; }
         @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
-
-        .msg-action-btn { display:flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:6px; background:transparent; border:none; color:#bbb; cursor:pointer; transition:color .15s, background .15s; }
-        .msg-action-btn:hover { background:#f4f4f4; color:#111; }
-        .msg-action-btn:disabled { opacity:.3; cursor:not-allowed; }
-
-        .chat-textarea { width:100%; resize:none; background:transparent; border:none; outline:none; font-size:15px; line-height:1.65; color:#111; padding:0; min-height:24px; max-height:200px; font-family:inherit; }
-        .chat-textarea::placeholder { color:#bbb; }
-
-        .msgs-scroll { scrollbar-width:thin; scrollbar-color:#ebebeb transparent; }
-        .msgs-scroll::-webkit-scrollbar { width:4px; }
-        .msgs-scroll::-webkit-scrollbar-track { background:transparent; }
-        .msgs-scroll::-webkit-scrollbar-thumb { background:#ebebeb; border-radius:4px; }
+        .msg-action-btn { display:flex; align-items:center; justify-content:center; width:24px; height:24px; border-radius:6px; background:transparent; border:none; color:#a1a1aa; cursor:pointer; transition:all .15s; }
+        .msg-action-btn:hover { background:#f4f4f5; color:#18181b; }
+        .chat-textarea { width:100%; resize:none; background:transparent; border:none; outline:none; font-size:15px; line-height:1.6; color:#18181b; padding:0; min-height:24px; max-height:200px; font-family:inherit; }
+        .chat-textarea::placeholder { color:#a1a1aa; }
+        .msgs-scroll { scrollbar-width:thin; scrollbar-color:transparent transparent; }
+        .msgs-scroll:hover { scrollbar-color:#e4e4e7 transparent; }
+        .markdown-content h1, .markdown-content h2, .markdown-content h3 { font-weight: 600; margin-top: 1.2em; margin-bottom: 0.6em; color: #111; }
+        .markdown-content h1 { font-size: 1.4em; }
+        .markdown-content h2 { font-size: 1.25em; }
+        .markdown-content p { margin-bottom: 0.8em; line-height: 1.7; color: #374151; }
+        .markdown-content ul, .markdown-content ol { margin-left: 1.2em; margin-bottom: 0.8em; color: #374151; }
+        .markdown-content li { margin-bottom: 0.4em; }
+        .markdown-content code { background: #f3f4f6; padding: 0.2em 0.4em; border-radius: 4px; font-size: 0.85em; font-family: monospace; color: #111; }
+        .markdown-content pre { background: #f9fafb; padding: 1em; border-radius: 8px; overflow-x: auto; margin-bottom: 1em; border: 1px solid #e5e7eb; }
+        .markdown-content pre code { background: transparent; padding: 0; color: inherit; }
+        .markdown-content blockquote { border-left: 3px solid #e5e7eb; padding-left: 1em; color: #6b7280; font-style: italic; }
+        .markdown-content a { color: #2563eb; text-decoration: none; font-weight: 500; }
+        .markdown-content a:hover { text-decoration: underline; }
       `}</style>
 
-      <div className="flex h-screen overflow-hidden bg-white text-[#111]" style={{ fontFamily: "'ui-sans-serif', system-ui, sans-serif" }}>
-        <aside className="hidden w-[270px] shrink-0 border-r border-gray-200 bg-[#fafafa] p-3 md:flex md:flex-col">
+      <DeleteConfirmationModal
+        isOpen={deleteConfirm.isOpen}
+        chatTitle={deleteConfirm.chatTitle}
+        onConfirm={confirmDelete}
+        onCancel={closeDeleteConfirm}
+        isDeleting={deleteConfirm.isDeleting}
+      />
+
+      <div className="flex h-screen overflow-hidden bg-white text-gray-900 font-sans">
+        {/* Sidebar */}
+        <aside className="hidden w-[260px] shrink-0 border-r border-gray-100 bg-gray-50/50 p-4 md:flex md:flex-col">
           <button
             onClick={createNewChat}
-            className="mb-3 flex items-center justify-center gap-2 rounded-lg bg-[#111] px-3 py-2 text-sm text-white transition hover:bg-[#2b2b2b]"
+            className="mb-6 flex items-center gap-2 rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-black hover:shadow-md"
             disabled={isLoading || isLoadingMessages}
           >
             <Plus className="h-4 w-4" />
-            New chat
+            <span className="flex-1 text-left">New Chat</span>
           </button>
 
-          <div className="flex-1 space-y-1 overflow-y-auto">
+          <div className="flex-1 space-y-1 overflow-y-auto pr-1">
             {isLoadingChats ? (
-              <p className="px-2 py-1 text-xs text-gray-500">Loading chats...</p>
+              <div className="space-y-3 px-2">
+                 <div className="h-4 w-2/3 animate-pulse rounded bg-gray-200" />
+                 <div className="h-4 w-1/2 animate-pulse rounded bg-gray-200" />
+              </div>
             ) : chats.length === 0 ? (
-              <p className="px-2 py-1 text-xs text-gray-500">No chats yet. Start with New chat.</p>
+              <p className="px-2 py-4 text-xs text-gray-400 text-center">Your chat history will appear here.</p>
             ) : (
               chats.map((chat) => (
-                <button
+                <div
                   key={chat.id}
-                  onClick={() => void loadChatMessages(chat.id)}
-                  className={`w-full rounded-lg px-3 py-2 text-left text-sm transition ${
+                  className={`group relative flex items-center rounded-lg px-3 py-2.5 transition-colors ${
                     activeChatId === chat.id
-                      ? "bg-white text-[#111] shadow-sm"
-                      : "text-gray-600 hover:bg-white hover:text-[#111]"
+                      ? "bg-white shadow-sm ring-1 ring-gray-200/50"
+                      : "hover:bg-gray-100/70"
                   }`}
                 >
-                  <p className="truncate font-medium">{formatChatLabel(chat)}</p>
-                </button>
+                  <button
+                    onClick={() => void loadChatMessages(chat.id)}
+                    className="flex-1 truncate text-left"
+                  >
+                    <p className={`truncate text-[13px] ${activeChatId === chat.id ? "font-medium text-gray-900" : "text-gray-600"}`}>
+                      {formatChatLabel(chat)}
+                    </p>
+                  </button>
+                  {activeChatId === chat.id && (
+                     <button
+                     onClick={(e) => {
+                       e.stopPropagation();
+                       openDeleteConfirm(chat.id, formatChatLabel(chat));
+                     }}
+                     className="ml-2 rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-500"
+                   >
+                     <Trash className="h-3.5 w-3.5" />
+                   </button>
+                  )}
+                </div>
               ))
             )}
           </div>
         </aside>
 
-        <main className="relative flex min-w-0 flex-1 flex-col">
-          <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3 md:hidden">
+        {/* Main */}
+        <main className="relative flex min-w-0 flex-1 flex-col bg-white">
+          {/* Mobile top bar */}
+          <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 md:hidden">
+             <span className="text-sm font-semibold">Health Assistant</span>
             <button
               onClick={createNewChat}
-              className="flex items-center gap-2 rounded-md border border-gray-300 px-2.5 py-1.5 text-sm text-gray-700"
-              disabled={isLoading || isLoadingMessages}
+              className="rounded-full bg-gray-100 p-2 text-gray-600"
             >
-              <Plus className="h-4 w-4" />
-              New chat
+              <Plus className="h-5 w-5" />
             </button>
-            <select
-              className="max-w-[62%] truncate rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-600"
-              value={activeChatId ?? ""}
-              onChange={(e) => {
-                const selected = e.target.value;
-                if (selected) {
-                  void loadChatMessages(selected);
-                }
-              }}
-            >
-              <option value="">Select chat</option>
-              {chats.map((chat) => (
-                <option key={chat.id} value={chat.id}>
-                  {formatChatLabel(chat)}
-                </option>
-              ))}
-            </select>
           </div>
 
+          {/* Messages */}
           <div
             ref={scrollContainerRef}
-            className="msgs-scroll flex-1 overflow-y-auto"
             onScroll={handleScroll}
+            className="msgs-scroll flex-1 overflow-y-auto"
             role="log"
             aria-live="polite"
           >
-            <div className="mx-auto max-w-4xl px-5 pb-44 pt-10">
+            <div className="mx-auto max-w-3xl px-4 pb-48 pt-12">
               <AnimatePresence>
                 {showHero && (
                   <motion.div
                     key="hero"
-                    initial={{ opacity: 0, y: 8 }}
+                    initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8 }}
-                    transition={{ duration: 0.28 }}
-                    className="mb-12 text-center"
+                    exit={{ opacity: 0, y: -10 }}
+                    className="flex h-[50vh] flex-col items-center justify-center text-center"
                   >
-                    <h1 className="mb-1.5 text-[28px] font-semibold tracking-tight text-[#111]">
-                      {user?.name ? `Good to see you, ${user.name}.` : "How can I help you?"}
+                    <div className="mb-6 rounded-full bg-gray-50 p-4 ring-1 ring-gray-100">
+                      <MessageSquare className="h-8 w-8 text-gray-400" />
+                    </div>
+                    <h1 className="mb-2 text-2xl font-semibold tracking-tight text-gray-900">
+                      {user?.name ? `Hello, ${user.name}` : "Health Assistant"}
                     </h1>
-                    <p className="text-sm text-[#aaa]">AI Health Assistant</p>
-                    {!activeChatId && (
-                      <p className="mt-3 text-xs text-gray-500">
-                        Click <strong>New chat</strong> to start, or open a saved chat from the sidebar.
-                      </p>
-                    )}
+                    <p className="max-w-md text-sm text-gray-500">
+                      I can help you analyze symptoms, explain medical terms, or track your wellness goals.
+                    </p>
                   </motion.div>
                 )}
               </AnimatePresence>
 
               {isLoadingMessages ? (
-                <p className="text-center text-sm text-gray-500">Loading messages...</p>
+                <div className="flex h-full items-center justify-center pb-20">
+                   <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-200 border-t-black" />
+                </div>
               ) : (
                 <AnimatePresence initial={false}>
-                  {messages.map((msg) => (
-                    <motion.div
-                      key={msg.id}
-                      initial={{ opacity: 0, y: 6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.18 }}
-                      className={`group mb-8 ${msg.role === "user" ? "flex justify-end" : "flex justify-start"}`}
-                    >
-                      {msg.role === "user" ? (
-                        <div className="flex max-w-xl flex-col items-end gap-1.5">
-                          <div className="whitespace-pre-wrap rounded-[20px] rounded-tr-[6px] bg-[#f4f4f4] px-4 py-2.5 text-[15px] leading-relaxed text-[#111]">
-                            {msg.content}
+                  {messages.map((msg, idx) => {
+                    const isUser = msg.role === "user";
+                    return (
+                      <motion.div
+                        key={msg.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, ease: "easeOut" }}
+                        className={`group mb-8 flex w-full ${isUser ? "justify-end" : "justify-start"}`}
+                      >
+                        <div className={`flex max-w-2xl flex-col ${isUser ? "items-end" : "items-start"}`}>
+                          <div className="mb-1.5 flex items-center gap-2 px-1">
+                             <span className="text-[11px] font-medium text-gray-400">
+                                {isUser ? "You" : "Assistant"}
+                             </span>
+                             <span className="text-[11px] text-gray-300">•</span>
+                             <span className="text-[11px] text-gray-300">{formatTime(msg.timestamp)}</span>
                           </div>
-                          <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                            <CopyButton text={msg.content} />
-                            <button
-                              onClick={() => handleResend(msg.content)}
-                              disabled={isLoading || !activeChatId}
-                              className="msg-action-btn"
-                              title="Resend"
-                            >
-                              <RotateCcw className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex w-full max-w-xl flex-col gap-1.5">
-                          <div className="whitespace-pre-wrap text-[15px] leading-[1.78] text-[#111]">
-                            {!msg.content && !msg.error ? (
-                              <ThinkingDots />
-                            ) : (
-                              <>
-                                {msg.content}
-                                {msg.isStreaming && <StreamCursor />}
-                              </>
-                            )}
-                            {msg.error && (
-                              <span className="ml-1 text-sm text-red-400">
-                                Something went wrong. {" "}
-                                <button onClick={retryLast} className="underline decoration-dashed hover:text-red-500">
-                                  Retry
+
+                          {isUser ? (
+                            // CHANGED: Blended user message (no border, subtle background)
+                            <div className="relative rounded-3xl bg-gray-100/80 px-5 py-3 text-[15px] leading-relaxed text-gray-800">
+                              {msg.content}
+                              <div className="absolute -left-10 top-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100">
+                                <button
+                                  onClick={() => handleResend(msg.content)}
+                                  className="p-2 text-gray-400 hover:text-gray-600"
+                                  title="Edit & Resend"
+                                >
+                                  <RotateCcw className="h-4 w-4" />
                                 </button>
-                              </span>
-                            )}
-                          </div>
-                          {!msg.isStreaming && msg.content && (
-                            <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                              <CopyButton text={msg.content} />
+                              </div>
+                            </div>
+                          ) : (
+                            // CHANGED: Blended assistant message (no card, no border)
+                            <div className="w-full px-1">
+                              {!msg.content && !msg.error ? (
+                                <ThinkingDots />
+                              ) : (
+                                <div className="markdown-content text-[15px] text-gray-800">
+                                  {msg.error ? (
+                                    <span className="text-red-500">
+                                      Something went wrong.{" "}
+                                      <button onClick={retryLast} className="underline hover:text-red-600">
+                                        Retry
+                                      </button>
+                                    </span>
+                                  ) : (
+                                    <>
+                                      <ReactMarkdown
+                                        components={{
+                                          // Override components if needed for custom styling
+                                          a: (props) => <a {...props} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline" />,
+                                        }}
+                                      >
+                                        {msg.content}
+                                      </ReactMarkdown>
+                                      {msg.isStreaming && <StreamCursor />}
+                                    </>
+                                  )}
+                                </div>
+                              )}
+                              
+                              {!msg.isStreaming && msg.content && !msg.error && (
+                                <div className="mt-2 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                                  <CopyButton text={msg.content} />
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
-                      )}
-                    </motion.div>
-                  ))}
+                      </motion.div>
+                    );
+                  })}
                 </AnimatePresence>
               )}
-
-              <div ref={messagesEndRef} />
+              <div ref={messagesEndRef} className="h-px" />
             </div>
           </div>
 
+          {/* Scroll button */}
           <AnimatePresence>
             {showScrollBtn && (
               <motion.button
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 6 }}
-                transition={{ duration: 0.15 }}
-                onClick={() => {
-                  userScrolledUpRef.current = false;
-                  scrollToBottom(true);
-                }}
-                className="fixed bottom-[138px] left-1/2 z-20 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3.5 py-1.5 text-[13px] text-[#555] shadow-sm transition-all hover:bg-gray-50"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                onClick={() => scrollToBottom("smooth")}
+                className="fixed bottom-32 left-1/2 -translate-x-1/2 rounded-full bg-white p-2 shadow-lg ring-1 ring-gray-200 transition hover:bg-gray-50 md:left-[60%]"
               >
-                <ArrowDown className="h-3.5 w-3.5" />
-                Scroll to bottom
+                <ArrowDown className="h-4 w-4 text-gray-500" />
               </motion.button>
             )}
           </AnimatePresence>
 
-          <div className="absolute bottom-0 left-0 right-0 bg-white">
-            <div className="pointer-events-none -mt-10 h-10 bg-gradient-to-t from-white to-transparent" />
-
-            <div className="mx-auto max-w-4xl px-5 pb-5">
+          {/* Input Area */}
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-white via-white to-white/0 pt-10">
+            <div className="mx-auto max-w-3xl px-4 pb-6">
               <AnimatePresence>
                 {isLoading && (
                   <motion.div
-                    initial={{ opacity: 0, y: 4 }}
+                    initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 4 }}
-                    className="mb-3 flex justify-center"
+                    exit={{ opacity: 0, y: 10 }}
+                    className="mb-2 flex justify-center"
                   >
                     <button
                       onClick={handleStop}
-                      className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-1.5 text-[13px] text-[#555] shadow-sm transition-all hover:bg-gray-50"
+                      className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-500 shadow-sm hover:bg-gray-50"
                     >
-                      <StopCircle className="h-3.5 w-3.5 text-[#aaa]" />
+                      <StopCircle className="h-3 w-3" />
                       Stop generating
                     </button>
                   </motion.div>
                 )}
               </AnimatePresence>
 
-              <div className="flex items-end gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-[0_2px_20px_rgba(0,0,0,0.06)]">
-                <textarea
-                  ref={inputRef}
-                  value={input}
-                  onChange={handleInputChange}
-                  onKeyDown={handleKeyDown}
-                  placeholder={activeChatId ? "Message..." : "Create or select a chat first"}
-                  disabled={isLoading || !activeChatId}
-                  rows={1}
-                  aria-label="Chat input"
-                  className="chat-textarea"
-                />
-
-                <div className="shrink-0 pb-[2px]">
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={handleMicClick}
-                      disabled={isLoading || !recognitionRef.current || !activeChatId}
-                      aria-label={isListening ? "Stop" : "Voice"}
-                      className={`rounded-lg p-1.5 transition-all ${
-                        isListening ? "animate-pulse text-blue-500" : "text-[#ccc] hover:text-[#666]"
-                      }`}
-                    >
-                      <Mic className="h-4 w-4" />
-                    </button>
-
-                    <button
-                      onClick={handleSend}
-                      disabled={!input.trim() || isLoading || !activeChatId}
-                      aria-label="Send"
-                      className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#111] transition-all hover:bg-[#333] disabled:cursor-not-allowed disabled:bg-[#ebebeb]"
-                    >
-                      <Send className="h-3.5 w-3.5 text-white disabled:text-[#bbb]" />
-                    </button>
-                  </div>
+              <div className="relative flex items-end gap-2 rounded-3xl bg-gray-50 p-2 ring-1 ring-gray-200 focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-500/20 shadow-sm transition-all">
+                <div className="flex-1 pb-2 pl-4 pt-2">
+                  <textarea
+                    ref={inputRef}
+                    value={input}
+                    onChange={handleInputChange}
+                    onKeyDown={handleKeyDown}
+                    placeholder={activeChatId ? "Ask anything..." : "Select a chat to start"}
+                    disabled={isLoading || !activeChatId}
+                    rows={1}
+                    className="chat-textarea bg-transparent placeholder:text-gray-400"
+                  />
+                </div>
+                
+                <div className="flex shrink-0 items-center gap-1 pb-1 pr-1">
+                   <button
+                    onClick={handleMicClick}
+                    disabled={isLoading || !recognitionRef.current || !activeChatId}
+                    className={`flex h-8 w-8 items-center justify-center rounded-full transition ${
+                      isListening ? "bg-red-100 text-red-600" : "text-gray-400 hover:bg-gray-200 hover:text-gray-600"
+                    }`}
+                  >
+                    <Mic className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={handleSend}
+                    disabled={!input.trim() || isLoading || !activeChatId}
+                    className={`flex h-8 w-8 items-center justify-center rounded-full transition-all ${
+                       input.trim() 
+                       ? "bg-black text-white shadow-md hover:translate-y-[-1px]" 
+                       : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                    }`}
+                  >
+                    <Send className="h-3.5 w-3.5" />
+                  </button>
                 </div>
               </div>
 
-              {errorMsg && (
-                <div className="mt-2 flex items-center gap-2 text-xs text-red-400">
-                  {errorMsg}
-                  <button onClick={retryLast} className="underline decoration-dashed hover:text-red-500">
-                    Retry
-                  </button>
-                </div>
-              )}
-
-              <p className="mt-2 text-center text-[11px] text-[#d0d0d0]">
-                Enter to send. Shift+Enter for new line.
-              </p>
-
-              <p className="mt-1 flex items-center justify-center gap-1 text-[11px] text-[#c4c4c4] md:hidden">
-                <MessageSquare className="h-3 w-3" />
-                Open desktop view for full chat history sidebar.
-              </p>
+              <div className="mt-2 text-center">
+                 <p className="text-[10px] text-gray-400">
+                    AI can make mistakes. Check important info.
+                 </p>
+              </div>
             </div>
           </div>
         </main>
