@@ -1,7 +1,9 @@
 "use client";
 
 import Footer from "@/components/Footer";
-import { motion, type Variants } from "motion/react";
+import { motion } from "framer-motion";
+import type { Variants } from "framer-motion";
+
 const features = [
   {
     title: "AI Health Assistant",
@@ -20,7 +22,7 @@ const features = [
   },
 ];
 
-const containerVariants:Variants = {
+const containerVariants: Variants = {
   hidden: {},
   show: {
     transition: {
@@ -30,7 +32,7 @@ const containerVariants:Variants = {
   },
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 28 },
   show: {
     opacity: 1,
@@ -91,20 +93,17 @@ export default function Page() {
 
           {/* Input + CTA + Social Proof */}
           <motion.div variants={itemVariants} className="flex flex-col gap-5">
-            
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                
-                <button
-                  type="button"
-                  className="h-14 rounded-[32px] px-7 font-[Geist] text-[15px] font-medium text-white
-                             bg-gradient-to-b from-[#3a3a3a] via-[#181818] to-[#0c0c0c]
-                             shadow-[inset_-4px_-6px_25px_0px_rgba(201,201,201,0.08),inset_4px_4px_10px_0px_rgba(29,29,29,0.24)]
-                             transition-transform duration-200 hover:scale-[1.01] active:scale-[0.99]"
-                >
-                  Join Swastha Sathi
-                </button>
-              </div>
-           
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <button
+                type="button"
+                className="h-14 rounded-[32px] px-7 font-[Geist] text-[15px] font-medium text-white
+                           bg-gradient-to-b from-[#3a3a3a] via-[#181818] to-[#0c0c0c]
+                           shadow-[inset_-4px_-6px_25px_0px_rgba(201,201,201,0.08),inset_4px_4px_10px_0px_rgba(29,29,29,0.24)]
+                           transition-transform duration-200 hover:scale-[1.01] active:scale-[0.99]"
+              >
+                Join Swastha Sathi
+              </button>
+            </div>
 
             <div className="inline-flex w-fit items-center gap-3 rounded-full border border-black/5 bg-white/80 px-4 py-2 backdrop-blur-sm">
               <div className="flex items-center gap-1">
@@ -126,43 +125,44 @@ export default function Page() {
             </div>
           </motion.div>
         </motion.div>
-
-        
       </div>
-      <section id="features" className="mx-auto max-w-[1200px] px-6 pb-24">
-  <motion.div
-    variants={containerVariants}
-    initial="hidden"
-    whileInView="show"
-    viewport={{ once: true, amount: 0.2 }}
-    className="flex flex-col gap-8"
-  >
-    <motion.h2
-      variants={itemVariants}
-      className="font-[Geist] text-[42px] font-medium leading-tight tracking-[-0.03em] text-[#111]"
-    >
-      Powerful features of Swastha Sathi
-    </motion.h2>
 
-    <div className="grid gap-5 md:grid-cols-3">
-      {features.map((feature) => (
+      {/* Features Section */}
+      <section id="features" className="mx-auto max-w-[1200px] px-6 pb-24">
         <motion.div
-          key={feature.title}
-          variants={itemVariants}
-          className="rounded-[24px] border border-black/10 bg-white p-6 shadow-[0px_10px_30px_0px_rgba(30,30,30,0.04)]"
+          variants={containerVariants}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, amount: 0.2 }}
+          className="flex flex-col gap-8"
         >
-          <h3 className="font-[Geist] text-[22px] font-medium text-[#111]">
-            {feature.title}
-          </h3>
-          <p className="mt-3 font-[Geist] text-[16px] leading-relaxed text-[#373a46]/80">
-            {feature.description}
-          </p>
+          <motion.h2
+            variants={itemVariants}
+            className="font-[Geist] text-[42px] font-medium leading-tight tracking-[-0.03em] text-[#111]"
+          >
+            Powerful features of Swastha Sathi
+          </motion.h2>
+
+          <div className="grid gap-5 md:grid-cols-3">
+            {features.map((feature) => (
+              <motion.div
+                key={feature.title}
+                variants={itemVariants}
+                className="rounded-[24px] border border-black/10 bg-white p-6 shadow-[0px_10px_30px_0px_rgba(30,30,30,0.04)]"
+              >
+                <h3 className="font-[Geist] text-[22px] font-medium text-[#111]">
+                  {feature.title}
+                </h3>
+                <p className="mt-3 font-[Geist] text-[16px] leading-relaxed text-[#373a46]/80">
+                  {feature.description}
+                </p>
+              </motion.div>
+            ))}
+          </div>
         </motion.div>
-      ))}
-    </div>
-  </motion.div>
-</section>
-<Footer/>
+      </section>
+
+      <Footer />
     </section>
   );
 }

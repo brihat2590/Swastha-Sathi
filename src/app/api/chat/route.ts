@@ -5,6 +5,35 @@ import { auth } from "@/lib/auth";
 import { mem0Client } from "@/lib/mem0";
 import { getUserContext } from "@/lib/actions/getUserContext";
 import { getCachedUserContext,setCachedUserContext } from "@/lib/cache/userContextCache";
+import prisma from "@/lib/prisma";
+
+export async function GET(req: NextRequest) {
+  try {
+    const session = await auth.api.getSession({
+      headers: req.headers,
+    });
+
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const chats = await prisma.chatSession.findMany({
+      where: { userId: session.user.id },
+      orderBy: { updatedAt: "desc" },
+      select: {
+        id: true,
+        title: true,
+        updatedAt: true,
+        createdAt: true,
+      },
+    });
+
+    return NextResponse.json(chats);
+  } catch (error) {
+    console.error("Chat sessions fetch error:", error);
+    return NextResponse.json({ error: "Failed to fetch chats" }, { status: 500 });
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {

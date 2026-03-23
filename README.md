@@ -1,8 +1,8 @@
-# Swastha-Sathi (Health Companion) 🏥✨
+# Swastha-Sathi (Health Companion) 
 
 Swastha-Sathi is an AI-powered health companion built with Next.js answering various health inquiries, managing your health data, finding nearby medical facilities, and providing context-aware AI interactions.
 
-## 🌟 Features
+##  Features
 
 - **Personalized AI Health Assistant:** Powered by LangChain, OpenAI, Google GenAI, and `mem0ai` for intelligent, memory-augmented interactions.
 - **Interactive Health Maps:** Find local clinics, hospitals, and pharmacies integrating `react-leaflet`.
