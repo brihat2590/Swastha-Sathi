@@ -14,31 +14,54 @@ async function fetchUserContext(userId: string) {
 }
 
 // POST /api/chat
-export async function POST(req: NextRequest,{params}:{params:{chatId:string}}) {
+export async function POST(
+  req: NextRequest,
+  { params }: { params:Promise< { chatId: string }> }
+) {
   try {
     const { message } = await req.json();
-    const {chatId}=await params;
-    
+    const { chatId } = await params;
+    if (!message || typeof message !== "string" || !message.trim()) {
+      return NextResponse.json({ response: "Message is required" }, { status: 400 });
+    }
 
     const session = await auth.api.getSession({
-      headers: await req.headers // you need to pass the headers object.
-    })
+      headers: req.headers,
+    });
     const userId = session?.user.id;
+    if (!userId) {
+      return NextResponse.json({ response: "Unauthorized" }, { status: 401 });
+    }
+
+    const chat = await prisma.chatSession.findUnique({
+      where: { id: chatId },
+      select: { id: true, userId: true, title: true },
+    });
+
+    if (!chat || chat.userId !== userId) {
+      return NextResponse.json({ response: "Chat not found" }, { status: 404 });
+    }
 
     await prisma.message.create({
-        data: {
-            chatId,
-            role: "USER",
-            content: message,
-            
-        },
-    })
+      data: {
+        chatId,
+        role: "USER",
+        content: message.trim(),
+      },
+    });
 
-    const history=await prisma.message.findMany({
-        where:{chatId},
-        orderBy:{createdAt:"desc"},
-        take:20
-    })
+    await prisma.chatSession.update({
+      where: { id: chatId },
+      data: {
+        title: chat.title ?? message.trim().slice(0, 60),
+      },
+    });
+
+    const history = await prisma.message.findMany({
+      where: { chatId },
+      orderBy: { createdAt: "asc" },
+      take: 20,
+    });
 
     // Fetch user context if userId is provided
     let userContextText = "";
@@ -52,10 +75,10 @@ export async function POST(req: NextRequest,{params}:{params:{chatId:string}}) {
     }
 
     // Construct prompt for Gemini
-    const messagesForAI =history.map((m)=>({
-        role:m.role==="USER"?"user":"assistant",
-        content:m.content
-    }))
+    const messagesForAI = history.map((m) => ({
+      role: m.role === "USER" ? "user" : "assistant",
+      content: m.content,
+    }));
 
     const prompt =
       userContextText +
@@ -66,12 +89,17 @@ export async function POST(req: NextRequest,{params}:{params:{chatId:string}}) {
       prompt,
     });
     await prisma.message.create({
-        data:{
-            chatId,
-            role:"ASSISTANT",
-            content:text
-        }
-    })
+      data: {
+        chatId,
+        role: "ASSISTANT",
+        content: text,
+      },
+    });
+
+    await prisma.chatSession.update({
+      where: { id: chatId },
+      data: { updatedAt: new Date() },
+    });
 
     return NextResponse.json({ response: text });
   } catch (error) {
@@ -80,14 +108,33 @@ export async function POST(req: NextRequest,{params}:{params:{chatId:string}}) {
   }
 }
 export async function GET(
-    req: Request,
-    { params }: { params: { chatId: string } }
-  ) {
-  
-    const messages = await prisma.message.findMany({
-      where: { chatId: params.chatId },
-      orderBy: { createdAt: "asc" }
-    });
-  
-    return Response.json(messages);
+  req: NextRequest,
+  { params }: { params:Promise< { chatId: string }> }
+) {
+  const session = await auth.api.getSession({
+    headers: req.headers,
+  });
+
+  const{chatId} = await params;
+  const userId = session?.user?.id;
+
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const chat = await prisma.chatSession.findUnique({
+    where: { id: chatId },
+    select: { id: true, userId: true },
+  });
+
+  if (!chat || chat.userId !== userId) {
+    return NextResponse.json({ error: "Chat not found" }, { status: 404 });
+  }
+
+  const messages = await prisma.message.findMany({
+    where: { chatId: chatId },
+    orderBy: { createdAt: "asc" },
+  });
+
+  return NextResponse.json(messages);
+}
