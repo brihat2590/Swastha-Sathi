@@ -3,6 +3,7 @@ import { generateText } from "ai";
 import { google } from "@ai-sdk/google";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { useAuthServer } from "@/hooks/useAuthServer";
 
 
 // Helper to fetch user context from your own API
@@ -137,4 +138,58 @@ export async function GET(
   });
 
   return NextResponse.json(messages);
+}
+
+export async function PUT(
+  req: NextRequest,
+  { params }: { params:Promise< { chatId: string }> }
+) {
+//   const session = await auth.api.getSession({
+//     headers: req.headers,
+//   });
+ const session=await useAuthServer();
+  const{chatId} = await params;
+  const userId =  session?.user?.id;
+
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const chat = await prisma.chatSession.findUnique({
+    where: { id: chatId },
+    select: { id: true, userId: true },
+  });
+
+  if (!chat || chat.userId !== userId) {
+    return NextResponse.json({ error: "Chat not found" }, { status: 404 });
+  }
+
+  const { title } = await req.json();
+  if (!title || typeof title !== "string") {
+    return NextResponse.json({ error: "Title is required" }, { status: 400 });
+  }
+
+  await prisma.chatSession.update({
+    where: { id: chatId },
+    data: { title },
+  });
+
+  return NextResponse.json({ success: true });
+}
+
+export async function DELETE({params}:{params:Promise<{chatId:string}>}){
+    const session=await useAuthServer();
+    const{chatId}=await params;
+
+    const chat=await prisma.chatSession.findUnique({
+        where:{id:chatId},
+        select:{id:true,userId:true}
+})
+if(!chat || chat.userId !== session?.user.id){
+    return NextResponse.json({error:"Chat not found"},{status:404});
+}
+const deleted=await prisma.chatSession.delete({
+    where:{id:chatId}
+})
+
 }

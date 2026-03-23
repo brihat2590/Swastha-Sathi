@@ -41,6 +41,17 @@ interface ApiMessage {
 const normalizeText = (text: string) =>
   text.replace(/\*\*/g, "").replace(/\n{2,}/g, "\n\n").trim();
 
+const generateChatTitle = (text: string): string => {
+  const cleaned = text
+    .replace(/[*#`\n]/g, " ")
+    .trim()
+    .split(/\s+/)
+    .slice(0, 8)
+    .join(" ");
+
+  return cleaned.substring(0, 50) || "New chat";
+};
+
 const getInitialMessage = (): Message => ({
   id: `init-${Date.now()}`,
   content: "Hello! I'm your AI health assistant. How can I help you today?",
@@ -50,11 +61,26 @@ const getInitialMessage = (): Message => ({
 
 function ThinkingDots() {
   return (
-    <span className="thinking-dots" aria-label="Thinking">
-      <span />
-      <span />
-      <span />
-    </span>
+    <div className="flex items-center gap-2 py-2">
+      <div className="flex gap-1.5">
+        <motion.div
+          animate={{ y: [0, -8, 0] }}
+          transition={{ duration: 0.6, repeat: Infinity, ease: "easeInOut" }}
+          className="h-2 w-2 rounded-full bg-gray-400"
+        />
+        <motion.div
+          animate={{ y: [0, -8, 0] }}
+          transition={{ duration: 0.6, repeat: Infinity, ease: "easeInOut", delay: 0.1 }}
+          className="h-2 w-2 rounded-full bg-gray-400"
+        />
+        <motion.div
+          animate={{ y: [0, -8, 0] }}
+          transition={{ duration: 0.6, repeat: Infinity, ease: "easeInOut", delay: 0.2 }}
+          className="h-2 w-2 rounded-full bg-gray-400"
+        />
+      </div>
+      <span className="text-xs text-gray-500">Thinking...</span>
+    </div>
   );
 }
 
@@ -340,12 +366,31 @@ export default function ChatInterface() {
         isStreaming: true,
       };
 
+      // Generate and save title on first message
+      if (messages.length <= 1) {
+        const title = generateChatTitle(text);
+
+        // Update local state immediately
+        setChats((prev) =>
+          prev.map((chat) =>
+            chat.id === activeChatId ? { ...chat, title } : chat
+          )
+        );
+
+        // Persist to backend using PUT
+        fetch(`/api/chat/${activeChatId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title }),
+        }).catch((err) => console.error("Failed to update title:", err));
+      }
+
       pendingAssistantIdRef.current = asstMsg.id;
       setMessages((prev) => [...prev, userMsg, asstMsg]);
       setIsLoading(true);
       void streamFromServer(userMsg, asstMsg.id, activeChatId);
     },
-    [activeChatId, isLoading]
+    [activeChatId, isLoading, messages.length]
   );
 
   const handleSend = () => sendMessage(input);
@@ -374,16 +419,6 @@ export default function ChatInterface() {
   return (
     <>
       <style>{`
-        .thinking-dots { display:inline-flex; align-items:center; gap:4px; height:18px; }
-        .thinking-dots span { width:5px; height:5px; border-radius:50%; background:#d1d5db; animation:dot-wave 1.2s ease-in-out infinite; }
-        .thinking-dots span:nth-child(1) { animation-delay:0s; }
-        .thinking-dots span:nth-child(2) { animation-delay:0.16s; }
-        .thinking-dots span:nth-child(3) { animation-delay:0.32s; }
-        @keyframes dot-wave {
-          0%,60%,100% { transform:translateY(0); background:#d1d5db; }
-          30% { transform:translateY(-5px); background:#111111; }
-        }
-
         .stream-cursor { display:inline-block; width:2px; height:1em; background:#111; margin-left:1px; vertical-align:text-bottom; animation:blink .65s step-end infinite; }
         @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
 
@@ -470,7 +505,7 @@ export default function ChatInterface() {
             role="log"
             aria-live="polite"
           >
-            <div className="mx-auto max-w-[680px] px-5 pb-44 pt-10">
+            <div className="mx-auto max-w-4xl px-5 pb-44 pt-10">
               <AnimatePresence>
                 {showHero && (
                   <motion.div
@@ -507,7 +542,7 @@ export default function ChatInterface() {
                       className={`group mb-8 ${msg.role === "user" ? "flex justify-end" : "flex justify-start"}`}
                     >
                       {msg.role === "user" ? (
-                        <div className="flex max-w-[75%] flex-col items-end gap-1.5">
+                        <div className="flex max-w-xl flex-col items-end gap-1.5">
                           <div className="whitespace-pre-wrap rounded-[20px] rounded-tr-[6px] bg-[#f4f4f4] px-4 py-2.5 text-[15px] leading-relaxed text-[#111]">
                             {msg.content}
                           </div>
@@ -524,7 +559,7 @@ export default function ChatInterface() {
                           </div>
                         </div>
                       ) : (
-                        <div className="flex w-full flex-col gap-1.5">
+                        <div className="flex w-full max-w-xl flex-col gap-1.5">
                           <div className="whitespace-pre-wrap text-[15px] leading-[1.78] text-[#111]">
                             {!msg.content && !msg.error ? (
                               <ThinkingDots />
@@ -581,7 +616,7 @@ export default function ChatInterface() {
           <div className="absolute bottom-0 left-0 right-0 bg-white">
             <div className="pointer-events-none -mt-10 h-10 bg-gradient-to-t from-white to-transparent" />
 
-            <div className="mx-auto max-w-[680px] px-5 pb-5">
+            <div className="mx-auto max-w-4xl px-5 pb-5">
               <AnimatePresence>
                 {isLoading && (
                   <motion.div
