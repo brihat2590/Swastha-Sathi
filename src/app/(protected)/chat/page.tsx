@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Mic,
   Send,
@@ -60,7 +61,6 @@ const getInitialMessage = (): Message => ({
   timestamp: new Date(),
 });
 
-// CHANGED: Now returns exact time (e.g., 10:45 AM)
 const formatTime = (date: Date): string => {
   return date.toLocaleTimeString("en-US", {
     hour: "numeric",
@@ -186,6 +186,8 @@ const formatChatLabel = (chat: ChatSession) => chat.title?.trim() || "New chat";
 
 /* ---------- Main Component ---------- */
 export default function ChatInterface() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<any | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -220,8 +222,11 @@ export default function ChatInterface() {
   const pendingAssistantIdRef = useRef<string | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const userScrolledUpRef = useRef(false);
+  const autoOpenNewChatRef = useRef(false);
+  const isCreatingChatRef = useRef(false);
+  const shouldOpenNewChat = searchParams.get("new") === "1";
 
-  // CHANGED: Improved scroll logic for smoothness
+  // Improved scroll logic
   const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
     if (userScrolledUpRef.current) return;
     messagesEndRef.current?.scrollIntoView({ behavior, block: "end" });
@@ -230,9 +235,10 @@ export default function ChatInterface() {
   const handleScroll = useCallback(() => {
     if (!scrollContainerRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
-    const isAtBottom = Math.abs(scrollHeight - clientHeight - scrollTop) < 50;
     
-    // Update user scroll state
+    // Increased threshold to 100px to make it easier to "break free" from auto-scroll
+    const isAtBottom = Math.abs(scrollHeight - clientHeight - scrollTop) < 100;
+    
     userScrolledUpRef.current = !isAtBottom;
     setShowScrollBtn(!isAtBottom && messages.length > 2);
   }, [messages.length]);
@@ -252,6 +258,30 @@ export default function ChatInterface() {
       setIsLoadingChats(false);
     }
   }, []);
+
+  const createNewChat = useCallback(async () => {
+    if (isCreatingChatRef.current) return null;
+    isCreatingChatRef.current = true;
+    try {
+      setErrorMsg(null);
+      const res = await fetch("/api/chat/new", { method: "POST" });
+      if (!res.ok) throw new Error("Failed to create chat");
+      const chat = (await res.json()) as ChatSession;
+      setChats((prev) => [chat, ...prev]);
+      setActiveChatId(chat.id);
+      localStorage.setItem("activeChatId", chat.id);
+      setMessages([getInitialMessage()]);
+      setInput("");
+      userScrolledUpRef.current = false;
+      requestAnimationFrame(() => scrollToBottom("auto"));
+      return chat;
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : "Failed to create chat");
+      return null;
+    } finally {
+      isCreatingChatRef.current = false;
+    }
+  }, [scrollToBottom]);
 
   const loadChatMessages = useCallback(
     async (chatId: string) => {
@@ -294,6 +324,17 @@ export default function ChatInterface() {
       }
 
       const chatsData = await fetchChats();
+
+      if (shouldOpenNewChat && !autoOpenNewChatRef.current) {
+        autoOpenNewChatRef.current = true;
+        const createdChat = await createNewChat();
+        if (createdChat) {
+          router.replace("/chat");
+        }
+        setIsHydrated(true);
+        return;
+      }
+
       const savedChatId = localStorage.getItem("activeChatId");
       if (savedChatId && chatsData.some((c) => c.id === savedChatId)) {
         await loadChatMessages(savedChatId);
@@ -301,7 +342,7 @@ export default function ChatInterface() {
 
       setIsHydrated(true);
     })();
-  }, [fetchChats, loadChatMessages]);
+  }, [createNewChat, fetchChats, loadChatMessages, router, shouldOpenNewChat]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -349,25 +390,6 @@ export default function ChatInterface() {
       setIsListening(true);
     } catch {
       setIsListening(false);
-    }
-  };
-
-  const createNewChat = async () => {
-    if (isLoading || isLoadingMessages) return;
-    try {
-      setErrorMsg(null);
-      const res = await fetch("/api/chat/new", { method: "POST" });
-      if (!res.ok) throw new Error("Failed to create chat");
-      const chat = (await res.json()) as ChatSession;
-      setChats((prev) => [chat, ...prev]);
-      setActiveChatId(chat.id);
-      localStorage.setItem("activeChatId", chat.id);
-      setMessages([getInitialMessage()]);
-      setInput("");
-      userScrolledUpRef.current = false;
-      requestAnimationFrame(() => scrollToBottom("auto"));
-    } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : "Failed to create chat");
     }
   };
 
@@ -423,16 +445,30 @@ export default function ChatInterface() {
         setMessages((prev) =>
           prev.map((m) => (m.id === assistantId ? { ...m, content: displayed, isStreaming: true } : m))
         );
-        // CHANGED: Use auto behavior for streaming to prevent jitter
+
+        // CHECK SCROLL POSITION BEFORE AUTO-SCROLLING
+        if (scrollContainerRef.current) {
+          const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
+          // If user is more than 100px up from the bottom, assume they want to stay there
+          const isUserScrolledUp = scrollHeight - scrollTop - clientHeight > 100;
+          if (isUserScrolledUp) {
+            userScrolledUpRef.current = true;
+          }
+        }
+        
+        // Only scroll if the user hasn't moved up
         if (!userScrolledUpRef.current) scrollToBottom("auto");
-        await new Promise((r) => setTimeout(r, 6)); // Slightly faster typing
+        
+        await new Promise((r) => setTimeout(r, 6));
       }
 
       setMessages((prev) =>
         prev.map((m) => (m.id === assistantId ? { ...m, content: displayed, isStreaming: false } : m))
       );
-
+      
+      // Update the chat list to reflect "last updated" time
       await fetchChats();
+
     } catch (err: any) {
       if (err?.name !== "AbortError") {
         setMessages((prev) =>
@@ -454,14 +490,25 @@ export default function ChatInterface() {
   };
 
   const sendMessage = useCallback(
-    (text: string) => {
-      if (!text.trim() || isLoading || !activeChatId) return;
+    async (text: string) => {
+      // 1. Basic checks
+      if (!text.trim() || isLoading) return;
 
+      // Reset UI states
       userScrolledUpRef.current = false;
       setInput("");
       if (inputRef.current) inputRef.current.style.height = "auto";
       inputRef.current?.focus();
 
+      // 2. Handle Chat ID (Create if doesn't exist)
+      let currentChatId = activeChatId;
+      if (!currentChatId) {
+        const newChat = await createNewChat();
+        if (!newChat) return; // Stop if creation failed
+        currentChatId = newChat.id;
+      }
+
+      // 3. Prepare Messages
       const userMsg: Message = {
         id: `${Date.now()}-user`,
         content: text.trim(),
@@ -476,26 +523,43 @@ export default function ChatInterface() {
         isStreaming: true,
       };
 
+      // 4. TITLE GENERATION & SAVING (The Critical Part)
+      // Only generate title for the first message exchange (usually messages.length is 0 or 1 init msg)
       if (messages.length <= 1) {
-        const title = generateChatTitle(text);
-        setChats((prev) => prev.map((chat) => (chat.id === activeChatId ? { ...chat, title } : chat)));
-        fetch(`/api/chat/${activeChatId}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title }),
-        }).catch((err) => console.error("Failed to update title:", err));
+        const generatedTitle = generateChatTitle(text);
+
+        // A. Update Frontend State immediately (Optimistic UI)
+        setChats((prev) => 
+          prev.map((chat) => 
+            chat.id === currentChatId ? { ...chat, title: generatedTitle } : chat
+          )
+        );
+
+        // B. Update Backend (Persist to DB)
+        try {
+          await fetch(`/api/chat/${currentChatId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ title: generatedTitle }),
+          });
+        } catch (err) {
+          console.error("Failed to save title to backend:", err);
+        }
       }
 
+      // 5. Start Streaming Response
       pendingAssistantIdRef.current = asstMsg.id;
       setMessages((prev) => [...prev, userMsg, asstMsg]);
       setIsLoading(true);
-      void streamFromServer(userMsg, asstMsg.id, activeChatId);
+      
+      // Pass the confirmed currentChatId
+      await streamFromServer(userMsg, asstMsg.id, currentChatId!);
     },
-    [activeChatId, isLoading, messages.length]
+    [activeChatId, isLoading, messages.length, createNewChat]
   );
 
   const handleSend = () => sendMessage(input);
-  const handleResend = (content: string) => !isLoading && activeChatId && sendMessage(content);
+  const handleResend = (content: string) => !isLoading && sendMessage(content);
   const retryLast = () => {
     const last = [...messages].reverse().find((m) => m.role === "user");
     if (last) handleResend(last.content);
@@ -664,14 +728,13 @@ export default function ChatInterface() {
                         <div className={`flex max-w-2xl flex-col ${isUser ? "items-end" : "items-start"}`}>
                           <div className="mb-1.5 flex items-center gap-2 px-1">
                              <span className="text-[11px] font-medium text-gray-400">
-                                {isUser ? "You" : "Assistant"}
+                                {isUser ? "You" : ""}
                              </span>
-                             <span className="text-[11px] text-gray-300">•</span>
+                             {/* <span className="text-[11px] text-gray-300">•</span> */}
                              <span className="text-[11px] text-gray-300">{formatTime(msg.timestamp)}</span>
                           </div>
 
                           {isUser ? (
-                            // CHANGED: Blended user message (no border, subtle background)
                             <div className="relative rounded-3xl bg-gray-100/80 px-5 py-3 text-[15px] leading-relaxed text-gray-800">
                               {msg.content}
                               <div className="absolute -left-10 top-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100">
@@ -685,7 +748,6 @@ export default function ChatInterface() {
                               </div>
                             </div>
                           ) : (
-                            // CHANGED: Blended assistant message (no card, no border)
                             <div className="w-full px-1">
                               {!msg.content && !msg.error ? (
                                 <ThinkingDots />
@@ -702,7 +764,6 @@ export default function ChatInterface() {
                                     <>
                                       <ReactMarkdown
                                         components={{
-                                          // Override components if needed for custom styling
                                           a: (props) => <a {...props} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline" />,
                                         }}
                                       >
@@ -775,8 +836,8 @@ export default function ChatInterface() {
                     value={input}
                     onChange={handleInputChange}
                     onKeyDown={handleKeyDown}
-                    placeholder={activeChatId ? "Ask anything..." : "Select a chat to start"}
-                    disabled={isLoading || !activeChatId}
+                    placeholder={"Ask Anything..."}
+                    disabled={isLoading}
                     rows={1}
                     className="chat-textarea bg-transparent placeholder:text-gray-400"
                   />
@@ -785,7 +846,7 @@ export default function ChatInterface() {
                 <div className="flex shrink-0 items-center gap-1 pb-1 pr-1">
                    <button
                     onClick={handleMicClick}
-                    disabled={isLoading || !recognitionRef.current || !activeChatId}
+                    disabled={isLoading || !recognitionRef.current}
                     className={`flex h-8 w-8 items-center justify-center rounded-full transition ${
                       isListening ? "bg-red-100 text-red-600" : "text-gray-400 hover:bg-gray-200 hover:text-gray-600"
                     }`}
@@ -794,7 +855,7 @@ export default function ChatInterface() {
                   </button>
                   <button
                     onClick={handleSend}
-                    disabled={!input.trim() || isLoading || !activeChatId}
+                    disabled={!input.trim() || isLoading}
                     className={`flex h-8 w-8 items-center justify-center rounded-full transition-all ${
                        input.trim() 
                        ? "bg-black text-white shadow-md hover:translate-y-[-1px]" 

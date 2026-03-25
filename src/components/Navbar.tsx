@@ -58,7 +58,7 @@ export default function Navbar() {
             <Link href="/dashboard" className="hover:text-indigo-600">
               Dashboard
             </Link>
-            <Link href="/chat" className="hover:text-indigo-600">
+            <Link href="/chat?new=1" className="hover:text-indigo-600">
               Chat
             </Link>
             <Link href="/custom" className="hover:text-indigo-600">
@@ -188,7 +188,7 @@ export default function Navbar() {
               <Link className="text-purple-600 underline" href="/dashboard" onClick={() => setMobileOpen(false)}>
                 Dashboard
               </Link>
-              <Link className="text-purple-600 underline" href="/chat" onClick={() => setMobileOpen(false)}>
+              <Link className="text-purple-600 underline" href="/chat?new=1" onClick={() => setMobileOpen(false)}>
                 Chat
               </Link>
               <Link className="text-purple-600 underline" href="/custom" onClick={() => setMobileOpen(false)}>

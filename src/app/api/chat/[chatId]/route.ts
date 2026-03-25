@@ -223,3 +223,69 @@ User: ${message}
     );
   }
 }
+// =======================
+// GET /api/chat/[chatId]
+// =======================
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ chatId: string }> }
+) {
+  try {
+    const { chatId } = await params;
+    const session = await auth.api.getSession({ headers: req.headers });
+
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const chat = await prisma.chatSession.findUnique({
+      where: { id: chatId },
+    });
+
+    if (!chat || chat.userId !== session.user.id) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    const messages = await prisma.message.findMany({
+      where: { chatId },
+      orderBy: { createdAt: "asc" },
+    });
+
+    return NextResponse.json(messages);
+  } catch (error) {
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  }
+}
+
+// =======================
+// DELETE /api/chat/[chatId]
+// =======================
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ chatId: string }> }
+) {
+  try {
+    const { chatId } = await params;
+    const session = await auth.api.getSession({ headers: req.headers });
+
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const chat = await prisma.chatSession.findUnique({
+      where: { id: chatId },
+    });
+
+    if (!chat || chat.userId !== session.user.id) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    await prisma.chatSession.delete({
+      where: { id: chatId },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  }
+}
