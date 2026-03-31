@@ -15,7 +15,7 @@ export default function ProtectedLayoutClient({ children }: { children: ReactNod
     }
   }, [isPending, session, error, router]);
 
-  if (isPending) return <CenteredLoader label="Please wait loading" />;
+  if (isPending) return <CenteredLoader label="Loading..." />;
   if (error) return <div>Error: {error.message}</div>;
   if (!session) return <CenteredLoader label="Redirecting to login. Please wait" />;
 

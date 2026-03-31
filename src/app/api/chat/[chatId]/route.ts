@@ -5,17 +5,11 @@ import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { useAuthServer } from "@/hooks/useAuthServer";
 import { mem0Client } from "@/lib/mem0";
+import { getUserContext } from "@/lib/actions/getUserContext";
+import { getCachedUserContext, setCachedUserContext } from "@/lib/cache/userContextCache";
 
-// Helper: Fetch user context
-async function fetchUserContext(userId: string) {
-  const baseUrl =
-    process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-
-  const res = await fetch(`${baseUrl}/api/v1/getUserContext/${userId}`);
-  if (!res.ok) throw new Error("Failed to fetch user context");
-
-  return res.json();
-}
+const isPlaceholderTitle = (title: string | null | undefined) =>
+  !title || title.trim().toLowerCase() === "new chat";
 
 // =======================
 // POST /api/chat/[chatId]
@@ -71,7 +65,7 @@ export async function POST(
     });
 
     // ✅ UPDATE TITLE
-    if (!chat.title) {
+    if (isPlaceholderTitle(chat.title)) {
       await prisma.chatSession.update({
         where: { id: chatId },
         data: {
@@ -108,7 +102,14 @@ export async function POST(
     let userContextText = "";
 
     try {
-      const userContext = await fetchUserContext(userId);
+      let userContext = getCachedUserContext(userId);
+
+
+      if (!userContext) {
+        userContext = await getUserContext(userId);
+        console.log("the user context is ", userContext); 
+        setCachedUserContext(userId, userContext);
+      }
 
       if (userContext) {
         userContextText = `
@@ -221,6 +222,53 @@ User: ${message}
       { response: "Something went wrong" },
       { status: 500 }
     );
+  }
+}
+
+// =======================
+// PUT /api/chat/[chatId]
+// =======================
+export async function PUT(
+  req: NextRequest,
+  { params }: { params: Promise<{ chatId: string }> }
+) {
+  try {
+    const { chatId } = await params;
+    const session = await auth.api.getSession({ headers: req.headers });
+
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { title } = await req.json();
+    const normalizedTitle = typeof title === "string" ? title.trim() : "";
+
+    if (!normalizedTitle) {
+      return NextResponse.json({ error: "Title is required" }, { status: 400 });
+    }
+
+    const chat = await prisma.chatSession.findUnique({
+      where: { id: chatId },
+    });
+
+    if (!chat || chat.userId !== session.user.id) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    const updated = await prisma.chatSession.update({
+      where: { id: chatId },
+      data: { title: normalizedTitle },
+      select: {
+        id: true,
+        title: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    return NextResponse.json(updated);
+  } catch (error) {
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
 // =======================
