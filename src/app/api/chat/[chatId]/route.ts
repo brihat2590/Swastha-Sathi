@@ -3,7 +3,6 @@ import { generateText } from "ai";
 import { google } from "@ai-sdk/google";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
-import { useAuthServer } from "@/hooks/useAuthServer";
 import { mem0Client } from "@/lib/mem0";
 
 // Helper: Fetch user context
@@ -17,12 +16,128 @@ async function fetchUserContext(userId: string) {
   return res.json();
 }
 
+type RouteParams = { params: Promise<{ chatId: string }> };
+
+async function getUserId(req: NextRequest): Promise<string | null> {
+  const session = await auth.api.getSession({
+    headers: req.headers,
+  });
+
+  return session?.user?.id ?? null;
+}
+
+async function getOwnedChat(chatId: string, userId: string) {
+  const chat = await prisma.chatSession.findUnique({
+    where: { id: chatId },
+    select: { id: true, userId: true, title: true },
+  });
+
+  if (!chat || chat.userId !== userId) {
+    return null;
+  }
+
+  return chat;
+}
+
+export async function GET(req: NextRequest, { params }: RouteParams) {
+  try {
+    const userId = await getUserId(req);
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { chatId } = await params;
+    const chat = await getOwnedChat(chatId, userId);
+    if (!chat) {
+      return NextResponse.json({ error: "Chat not found" }, { status: 404 });
+    }
+
+    const messages = await prisma.message.findMany({
+      where: { chatId },
+      orderBy: { createdAt: "asc" },
+      select: {
+        id: true,
+        role: true,
+        content: true,
+        createdAt: true,
+      },
+    });
+
+    return NextResponse.json(messages);
+  } catch (error) {
+    console.error("Fetch chat messages error:", error);
+    return NextResponse.json({ error: "Failed to fetch messages" }, { status: 500 });
+  }
+}
+
+export async function PUT(req: NextRequest, { params }: RouteParams) {
+  try {
+    const userId = await getUserId(req);
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { chatId } = await params;
+    const chat = await getOwnedChat(chatId, userId);
+    if (!chat) {
+      return NextResponse.json({ error: "Chat not found" }, { status: 404 });
+    }
+
+    const body = (await req.json()) as { title?: string };
+    const title = body?.title?.trim();
+
+    if (!title) {
+      return NextResponse.json({ error: "Title is required" }, { status: 400 });
+    }
+
+    const updated = await prisma.chatSession.update({
+      where: { id: chatId },
+      data: {
+        title: title.slice(0, 100),
+        updatedAt: new Date(),
+      },
+      select: {
+        id: true,
+        title: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    return NextResponse.json(updated);
+  } catch (error) {
+    console.error("Update chat title error:", error);
+    return NextResponse.json({ error: "Failed to update chat title" }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest, { params }: RouteParams) {
+  try {
+    const userId = await getUserId(req);
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { chatId } = await params;
+    const chat = await getOwnedChat(chatId, userId);
+    if (!chat) {
+      return NextResponse.json({ error: "Chat not found" }, { status: 404 });
+    }
+
+    await prisma.chatSession.delete({ where: { id: chatId } });
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Delete chat error:", error);
+    return NextResponse.json({ error: "Failed to delete chat" }, { status: 500 });
+  }
+}
+
 // =======================
 // POST /api/chat/[chatId]
 // =======================
 export async function POST(
   req: NextRequest,
-  { params }: { params: Promise<{ chatId: string }> }
+  { params }: RouteParams
 ) {
   try {
     const { message } = await req.json();

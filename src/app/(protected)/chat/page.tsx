@@ -13,6 +13,7 @@ import {
   MessageSquare,
   Trash,
   AlertCircle,
+  Loader2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { authClient } from "@/lib/auth-client";
@@ -185,6 +186,19 @@ const LoadingOverlay = () => (
 
 const formatChatLabel = (chat: ChatSession) => chat.title?.trim() || "New chat";
 
+const sortChatsByRecent = (items: ChatSession[]) =>
+  [...items].sort(
+    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+  );
+
+const ThinkingBlur = () => (
+  <div className="ai-thinking-shell" aria-label="Assistant is thinking">
+    <div className="ai-thinking-line ai-thinking-line-1" />
+    <div className="ai-thinking-line ai-thinking-line-2" />
+    <div className="ai-thinking-line ai-thinking-line-3" />
+  </div>
+);
+
 /* ---------- Main Component ---------- */
 export default function ChatInterface() {
   const [isListening, setIsListening] = useState(false);
@@ -197,6 +211,7 @@ export default function ChatInterface() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
+  const [isCreatingChat, setIsCreatingChat] = useState(false);
 
   const [chats, setChats] = useState<ChatSession[]>([]);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
@@ -244,8 +259,9 @@ export default function ChatInterface() {
       const res = await fetch("/api/chat", { method: "GET" });
       if (!res.ok) throw new Error("Failed to load chats");
       const data = (await res.json()) as ChatSession[];
-      setChats(data);
-      return data;
+      const sorted = sortChatsByRecent(data);
+      setChats(sorted);
+      return sorted;
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : "Failed to load chats");
       return [];
@@ -294,15 +310,14 @@ export default function ChatInterface() {
         });
       }
 
-      const chatsData = await fetchChats();
-      const savedChatId = localStorage.getItem("activeChatId");
-      if (savedChatId && chatsData.some((c) => c.id === savedChatId)) {
-        await loadChatMessages(savedChatId);
-      }
+      await fetchChats();
+      setActiveChatId(null);
+      localStorage.removeItem("activeChatId");
+      setMessages([getInitialMessage()]);
 
       setIsHydrated(true);
     })();
-  }, [fetchChats, loadChatMessages]);
+  }, [fetchChats]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -354,13 +369,14 @@ export default function ChatInterface() {
   };
 
   const createNewChat = async () => {
-    if (isLoading || isLoadingMessages) return;
+    if (isLoading || isLoadingMessages || isCreatingChat) return;
     try {
+      setIsCreatingChat(true);
       setErrorMsg(null);
       const res = await fetch("/api/chat/new", { method: "POST" });
       if (!res.ok) throw new Error("Failed to create chat");
       const chat = (await res.json()) as ChatSession;
-      setChats((prev) => [chat, ...prev]);
+      setChats((prev) => sortChatsByRecent([chat, ...prev]));
       setActiveChatId(chat.id);
       localStorage.setItem("activeChatId", chat.id);
       setMessages([getInitialMessage()]);
@@ -369,8 +385,21 @@ export default function ChatInterface() {
       requestAnimationFrame(() => scrollToBottom("auto"));
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : "Failed to create chat");
+    } finally {
+      setIsCreatingChat(false);
     }
   };
+
+  const createChatSession = useCallback(async () => {
+    const res = await fetch("/api/chat/new", { method: "POST" });
+    if (!res.ok) throw new Error("Failed to create chat");
+
+    const chat = (await res.json()) as ChatSession;
+    setChats((prev) => sortChatsByRecent([chat, ...prev]));
+    setActiveChatId(chat.id);
+    localStorage.setItem("activeChatId", chat.id);
+    return chat;
+  }, []);
 
   const openDeleteConfirm = (chatId: string, chatTitle: string) =>
     setDeleteConfirm({ isOpen: true, chatId, chatTitle, isDeleting: false });
@@ -416,21 +445,8 @@ export default function ChatInterface() {
 
       const data = await response.json();
       const full = data?.response ?? "Sorry, no response received.";
-      let displayed = "";
-
-      for (const char of full) {
-        if (abortRef.current?.signal.aborted) break;
-        displayed += char;
-        setMessages((prev) =>
-          prev.map((m) => (m.id === assistantId ? { ...m, content: displayed, isStreaming: true } : m))
-        );
-        // CHANGED: Use auto behavior for streaming to prevent jitter
-        if (!userScrolledUpRef.current) scrollToBottom("auto");
-        await new Promise((r) => setTimeout(r, 6)); // Slightly faster typing
-      }
-
       setMessages((prev) =>
-        prev.map((m) => (m.id === assistantId ? { ...m, content: displayed, isStreaming: false } : m))
+        prev.map((m) => (m.id === assistantId ? { ...m, content: full, isStreaming: false } : m))
       );
 
       await fetchChats();
@@ -455,17 +471,40 @@ export default function ChatInterface() {
   };
 
   const sendMessage = useCallback(
-    (text: string) => {
-      if (!text.trim() || isLoading || !activeChatId) return;
+    async (text: string) => {
+      if (!text.trim() || isLoading || isCreatingChat) return;
+
+      const trimmed = text.trim();
+      const hadActiveChat = Boolean(activeChatId);
 
       userScrolledUpRef.current = false;
       setInput("");
       if (inputRef.current) inputRef.current.style.height = "auto";
       inputRef.current?.focus();
 
+      let targetChatId = activeChatId;
+      if (!targetChatId) {
+        try {
+          setIsCreatingChat(true);
+          const chat = await createChatSession();
+          targetChatId = chat.id;
+          setMessages([getInitialMessage()]);
+        } catch (err) {
+          setErrorMsg(err instanceof Error ? err.message : "Failed to create chat");
+          return;
+        } finally {
+          setIsCreatingChat(false);
+        }
+      }
+
+      if (!targetChatId) {
+        setErrorMsg("Failed to create chat");
+        return;
+      }
+
       const userMsg: Message = {
         id: `${Date.now()}-user`,
-        content: text.trim(),
+        content: trimmed,
         role: "user",
         timestamp: new Date(),
       };
@@ -477,10 +516,12 @@ export default function ChatInterface() {
         isStreaming: true,
       };
 
-      if (messages.length <= 1) {
-        const title = generateChatTitle(text);
-        setChats((prev) => prev.map((chat) => (chat.id === activeChatId ? { ...chat, title } : chat)));
-        fetch(`/api/chat/${activeChatId}`, {
+      if (!hadActiveChat || messages.length <= 1) {
+        const title = generateChatTitle(trimmed);
+        setChats((prev) =>
+          prev.map((chat) => (chat.id === targetChatId ? { ...chat, title } : chat))
+        );
+        fetch(`/api/chat/${targetChatId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ title }),
@@ -490,13 +531,19 @@ export default function ChatInterface() {
       pendingAssistantIdRef.current = asstMsg.id;
       setMessages((prev) => [...prev, userMsg, asstMsg]);
       setIsLoading(true);
-      void streamFromServer(userMsg, asstMsg.id, activeChatId);
+      await streamFromServer(userMsg, asstMsg.id, targetChatId);
     },
-    [activeChatId, isLoading, messages.length]
+    [activeChatId, createChatSession, isCreatingChat, isLoading, messages.length]
   );
 
-  const handleSend = () => sendMessage(input);
-  const handleResend = (content: string) => !isLoading && activeChatId && sendMessage(content);
+  const handleSend = () => {
+    void sendMessage(input);
+  };
+  const handleResend = (content: string) => {
+    if (!isLoading) {
+      void sendMessage(content);
+    }
+  };
   const retryLast = () => {
     const last = [...messages].reverse().find((m) => m.role === "user");
     if (last) handleResend(last.content);
@@ -537,6 +584,33 @@ export default function ChatInterface() {
         .markdown-content blockquote { border-left: 3px solid #e5e7eb; padding-left: 1em; color: #6b7280; font-style: italic; }
         .markdown-content a { color: #2563eb; text-decoration: none; font-weight: 500; }
         .markdown-content a:hover { text-decoration: underline; }
+
+        @keyframes aiShimmer {
+          0% { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
+        }
+
+        .ai-thinking-shell {
+          width: min(380px, 88%);
+          padding: 4px 0;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+
+        .ai-thinking-line {
+          height: 12px;
+          border-radius: 999px;
+          background: linear-gradient(90deg, #e5e7eb 20%, #cbd5e1 45%, #e5e7eb 70%);
+          background-size: 220% 100%;
+          animation: aiShimmer 1.35s ease-in-out infinite;
+          filter: blur(0.2px);
+          opacity: 0.95;
+        }
+
+        .ai-thinking-line-1 { width: 75%; }
+        .ai-thinking-line-2 { width: 92%; }
+        .ai-thinking-line-3 { width: 68%; }
       `}</style>
 
       <DeleteConfirmationModal
@@ -547,24 +621,35 @@ export default function ChatInterface() {
         isDeleting={deleteConfirm.isDeleting}
       />
 
-      <div className="flex h-screen overflow-hidden bg-white text-gray-900 font-sans">
+      <div className="flex h-[calc(100dvh-4rem)] overflow-hidden bg-white text-gray-900 font-sans">
         {/* Sidebar */}
         <aside className="hidden w-[260px] shrink-0 border-r border-gray-100 bg-gray-50/50 p-4 md:flex md:flex-col">
           <button
             onClick={createNewChat}
             className="mb-6 flex items-center gap-2 rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-black hover:shadow-md"
-            disabled={isLoading || isLoadingMessages}
+            disabled={isLoading || isLoadingMessages || isCreatingChat}
           >
-            <Plus className="h-4 w-4" />
-            <span className="flex-1 text-left">New Chat</span>
+            {isCreatingChat ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+            <span className="flex-1 text-left">{isCreatingChat ? "Creating chat..." : "New Chat"}</span>
           </button>
 
-          <Link
-            href="/chat/voice"
-            className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 transition hover:bg-emerald-100"
-          >
-            Open Voice Chat
-          </Link>
+          <div className="mb-4 rounded-xl border border-gray-200 bg-white p-3">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Tools</p>
+            <div className="space-y-1">
+              <Link
+                href="/memories"
+                className="block rounded-lg px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100"
+              >
+                Memories
+              </Link>
+              <Link
+                href="/chat/voice"
+                className="block rounded-lg px-3 py-2 text-sm font-medium text-emerald-700 transition hover:bg-emerald-50"
+              >
+                Voice Chat
+              </Link>
+            </div>
+          </div>
 
           <div className="flex-1 space-y-1 overflow-y-auto pr-1">
             {isLoadingChats ? (
@@ -623,9 +708,10 @@ export default function ChatInterface() {
               </Link>
               <button
                 onClick={createNewChat}
-                className="rounded-full bg-gray-100 p-2 text-gray-600"
+                disabled={isCreatingChat}
+                className="rounded-full bg-gray-100 p-2 text-gray-600 disabled:opacity-60"
               >
-                <Plus className="h-5 w-5" />
+                {isCreatingChat ? <Loader2 className="h-5 w-5 animate-spin" /> : <Plus className="h-5 w-5" />}
               </button>
             </div>
           </div>
@@ -638,7 +724,7 @@ export default function ChatInterface() {
             role="log"
             aria-live="polite"
           >
-            <div className="mx-auto max-w-3xl px-4 pb-48 pt-12">
+            <div className="mx-auto max-w-3xl px-4 pb-40 pt-8">
               <AnimatePresence>
                 {showHero && (
                   <motion.div
@@ -646,7 +732,7 @@ export default function ChatInterface() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
-                    className="flex h-[50vh] flex-col items-center justify-center text-center"
+                    className="flex min-h-[34vh] flex-col items-center justify-center py-6 text-center"
                   >
                     <div className="mb-6 rounded-full bg-gray-50 p-4 ring-1 ring-gray-100">
                       <MessageSquare className="h-8 w-8 text-gray-400" />
@@ -668,6 +754,9 @@ export default function ChatInterface() {
               ) : (
                 <AnimatePresence initial={false}>
                   {messages.map((msg, idx) => {
+                    if (showHero && messages.length === 1 && msg.id.startsWith("init-")) {
+                      return null;
+                    }
                     const isUser = msg.role === "user";
                     return (
                       <motion.div
@@ -704,7 +793,7 @@ export default function ChatInterface() {
                             // CHANGED: Blended assistant message (no card, no border)
                             <div className="w-full px-1">
                               {!msg.content && !msg.error ? (
-                                <ThinkingDots />
+                                <ThinkingBlur />
                               ) : (
                                 <div className="markdown-content text-[15px] text-gray-800">
                                   {msg.error ? (
@@ -791,8 +880,8 @@ export default function ChatInterface() {
                     value={input}
                     onChange={handleInputChange}
                     onKeyDown={handleKeyDown}
-                    placeholder={activeChatId ? "Ask anything..." : "Select a chat to start"}
-                    disabled={isLoading || !activeChatId}
+                    placeholder="Ask anything..."
+                    disabled={isLoading}
                     rows={1}
                     className="chat-textarea bg-transparent placeholder:text-gray-400"
                   />
@@ -801,7 +890,7 @@ export default function ChatInterface() {
                 <div className="flex shrink-0 items-center gap-1 pb-1 pr-1">
                    <button
                     onClick={handleMicClick}
-                    disabled={isLoading || !recognitionRef.current || !activeChatId}
+                    disabled={isLoading || !recognitionRef.current}
                     className={`flex h-8 w-8 items-center justify-center rounded-full transition ${
                       isListening ? "bg-red-100 text-red-600" : "text-gray-400 hover:bg-gray-200 hover:text-gray-600"
                     }`}
@@ -810,7 +899,7 @@ export default function ChatInterface() {
                   </button>
                   <button
                     onClick={handleSend}
-                    disabled={!input.trim() || isLoading || !activeChatId}
+                    disabled={!input.trim() || isLoading}
                     className={`flex h-8 w-8 items-center justify-center rounded-full transition-all ${
                        input.trim() 
                        ? "bg-black text-white shadow-md hover:translate-y-[-1px]" 
