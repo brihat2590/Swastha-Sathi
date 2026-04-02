@@ -18,6 +18,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { authClient } from "@/lib/auth-client";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
+import Link from "next/link";
 
 /* ---------- Types ---------- */
 interface Message {
@@ -558,6 +559,13 @@ export default function ChatInterface() {
             <span className="flex-1 text-left">New Chat</span>
           </button>
 
+          <Link
+            href="/chat/voice"
+            className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 transition hover:bg-emerald-100"
+          >
+            Open Voice Chat
+          </Link>
+
           <div className="flex-1 space-y-1 overflow-y-auto pr-1">
             {isLoadingChats ? (
               <div className="space-y-3 px-2">
@@ -606,12 +614,20 @@ export default function ChatInterface() {
           {/* Mobile top bar */}
           <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 md:hidden">
              <span className="text-sm font-semibold">Health Assistant</span>
-            <button
-              onClick={createNewChat}
-              className="rounded-full bg-gray-100 p-2 text-gray-600"
-            >
-              <Plus className="h-5 w-5" />
-            </button>
+            <div className="flex items-center gap-2">
+              <Link
+                href="/chat/voice"
+                className="rounded-md bg-emerald-100 px-2.5 py-1.5 text-xs font-medium text-emerald-700"
+              >
+                Voice
+              </Link>
+              <button
+                onClick={createNewChat}
+                className="rounded-full bg-gray-100 p-2 text-gray-600"
+              >
+                <Plus className="h-5 w-5" />
+              </button>
+            </div>
           </div>
 
           {/* Messages */}
