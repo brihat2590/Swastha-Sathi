@@ -35,6 +35,7 @@ export async function GET(
   { params }: { params: Promise<{ userId: string }> }
 ) {
   const { userId } = await params;
+  const preferences = req.nextUrl.searchParams.get("preferences")?.trim() || "";
 
   if (!userId) {
     return NextResponse.json({ error: "userId is required" }, { status: 400 });
@@ -50,6 +51,9 @@ You are a certified fitness coach AI. Based on the following user profile and la
 
 User Profile & Health Data:
 ${JSON.stringify(userContext, null, 2)}
+
+User Preferences:
+${preferences || "No extra preferences provided."}
 
 Return the workout guide as a JSON object with these fields:
 - summary: A brief summary of the user's workout needs and goals.

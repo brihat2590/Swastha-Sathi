@@ -28,6 +28,7 @@ export async function GET(
   { params }: { params: Promise<{ userId: string }> }
 ) {
   const { userId } = await params;
+  const preferences = req.nextUrl.searchParams.get("preferences")?.trim() || "";
 
   if (!userId) {
     return NextResponse.json({ error: "userId is required" }, { status: 400 });
@@ -43,6 +44,9 @@ You are a certified nutritionist AI. Based on the following user profile and lat
 
 User Profile & Health Data:
 ${JSON.stringify(userContext, null, 2)}
+
+User Preferences:
+${preferences || "No extra preferences provided."}
 
 Return the nutrition guide as a JSON object with these fields:
 - caloriesRecommendation
