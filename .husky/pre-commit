@@ -1,0 +1,5 @@
+#!/bin/sh
+
+echo "Running build check..."
+pnpm build
+echo "Build passed. Proceeding with commit."
