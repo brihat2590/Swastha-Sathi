@@ -5,14 +5,13 @@ import { FcGoogle } from "react-icons/fc";
 import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import { toast } from "sonner";
-import { redirect, useRouter } from "next/navigation";
-import { TbPassword } from "react-icons/tb";
-import { CgCloseR } from "react-icons/cg";
-import { Eye, EyeOff } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 
 export default function SignUpPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [socialLoadingProvider, setSocialLoadingProvider] = useState<null | "github" | "google">(null);
   
   const [email, setEmail] = useState("");
   const[name,setName]=useState("");
@@ -121,14 +120,16 @@ export default function SignUpPage() {
           <button
             className="w-full border border-gray-300 rounded-lg py-2 flex justify-center items-center gap-2 hover:bg-gray-200 hover:scale-[1.03] transition-all shadow-sm"
             onClick={handleGithubSignup}
+            disabled={loading || socialLoadingProvider !== null}
           >
-            <FaGithub className="text-2xl" /> GitHub
+            {socialLoadingProvider === "github" ? <Loader2 className="h-5 w-5 animate-spin" /> : <FaGithub className="text-2xl" />} {socialLoadingProvider === "github" ? "Logging you in..." : "GitHub"}
           </button>
           <button
             className="w-full border border-gray-300 rounded-lg py-2 flex justify-center items-center gap-2 hover:bg-gray-200 hover:scale-[1.03] transition-all shadow-sm"
             onClick={handleGoogleSignup}
+            disabled={loading || socialLoadingProvider !== null}
           >
-            <FcGoogle className="text-2xl" /> Google
+            {socialLoadingProvider === "google" ? <Loader2 className="h-5 w-5 animate-spin" /> : <FcGoogle className="text-2xl" />} {socialLoadingProvider === "google" ? "Logging you in..." : "Google"}
           </button>
         </div>
 
@@ -171,34 +172,71 @@ export default function SignUpPage() {
             <button
               type="button"
               className="absolute right-3 top-3 text-indigo-400 hover:text-indigo-600 transition-all text-lg"
-              onClick={togglePasswordVisibility}
-            >
-              {passwordVisible ?<Eye/>  :<EyeOff/> }
-            </button>
-          </div>
+              const handleSignup = async (e: React.FormEvent) => {
+                e.preventDefault();
+                const toastId = toast.loading("Creating your account...");
 
-          <button
-            type="submit"
-            disabled={loading}
-            className={`w-full bg-indigo-600 text-white py-2 rounded-lg font-semibold shadow-md transition-all ${loading ? "opacity-60 cursor-not-allowed" : "hover:bg-indigo-700 hover:scale-[1.02]"}`}
-          >
-            {loading ? (
-              <div className="flex items-center justify-center gap-2">
-                <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3.5-3.5L12 0v4a8 8 0 00-8 8h4z"></path>
-                </svg>
-                Signing up...
-              </div>
-            ) : "Sign up"}
-          </button>
-        </form>
+                try {
+                  setLoading(true);
+                  const { error } = await authClient.signUp.email({
+                    email,
+                    password,
+                    name,
+                    callbackURL: "/sign-in",
+                  });
 
-        <p className="text-center text-sm text-gray-500 mt-7">
-          Already have an account?{" "}
-          <a href="/sign-in" className="text-indigo-600 hover:underline hover:text-indigo-800 font-medium">Sign in</a>
-        </p>
-      </div>
-    </div>
-  );
-}
+                  if (error) {
+                    toast.error(error.message || "Unable to create account. Please try again.", { id: toastId });
+                    return;
+                  }
+
+                  toast.success("Account created. Please log in.", { id: toastId });
+                  router.push("/sign-in");
+                } catch {
+                  toast.error("Unable to create account right now. Please try again.", { id: toastId });
+                } finally {
+                  setLoading(false);
+                }
+              };
+
+              const handleGoogleSignup = async () => {
+                const toastId = "social-google-signup";
+
+                try {
+                  setSocialLoadingProvider("google");
+                  toast.loading("Creating account with Google...", { id: toastId });
+
+                  await authClient.signIn.social({
+                    provider: "google",
+                    callbackURL: "/dashboard",
+                    errorCallbackURL: "/error",
+                    newUserCallbackURL: "/dashboard",
+                  });
+
+                  toast.success("Logged in. Redirecting to Google...", { id: toastId });
+                } catch {
+                  toast.error("Google sign up failed. Please try again.", { id: toastId });
+                  setSocialLoadingProvider(null);
+                }
+              };
+
+              const handleGithubSignup = async () => {
+                const toastId = "social-github-signup";
+
+                try {
+                  setSocialLoadingProvider("github");
+                  toast.loading("Creating account with GitHub...", { id: toastId });
+
+                  await authClient.signIn.social({
+                    provider: "github",
+                    callbackURL: "/dashboard",
+                    errorCallbackURL: "/error",
+                    newUserCallbackURL: "/dashboard",
+                  });
+
+                  toast.success("Logged in. Redirecting to GitHub...", { id: toastId });
+                } catch {
+                  toast.error("GitHub sign up failed. Please try again.", { id: toastId });
+                  setSocialLoadingProvider(null);
+                }
+              };

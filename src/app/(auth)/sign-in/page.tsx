@@ -6,13 +6,14 @@ import { FcGoogle } from "react-icons/fc";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 
 export default function SignInPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [socialLoadingProvider, setSocialLoadingProvider] = useState<null | "github" | "google">(null);
   const [passwordVisible, setPasswordVisible] = useState(false);
 
   const router = useRouter();
@@ -24,91 +25,72 @@ export default function SignInPage() {
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    setLoading(true);
-    const { data, error } = await authClient.signIn.email({
-      /**
-       * The user email
-       */
-      email,
-      /**
-       * The user password
-       */
-      password,
-      /**
-       * A URL to redirect to after the user verifies their email (optional)
-       */
-      callbackURL: "/dashboard",
-      /**
-       * remember the user session after the browser is closed. 
-       * @default true
-       */
-      rememberMe: false
-}, {
-  //callbacks
-})
-setLoading(false);
+    const toastId = toast.loading("Logging you in...");
+    try {
+      setLoading(true);
+      const { error } = await authClient.signIn.email({
+        email,
+        password,
+        callbackURL: "/dashboard",
+        rememberMe: false,
+      });
+
+      if (error) {
+        toast.error(error.message || "Unable to log in. Please try again.", { id: toastId });
+        return;
+      }
+
+      toast.success("Logged in successfully. Redirecting...", { id: toastId });
+      router.push("/dashboard");
+    } catch {
+      toast.error("Unable to log in right now. Please try again.", { id: toastId });
+    } finally {
+      setLoading(false);
+    }
 
     
   };
 
   const handleGoogleLogin = async () => {
-    await authClient.signIn.social({
-      /**
-       * The social provider ID
-       * @example "github", "google", "apple"
-       */
-      provider: "google",
-      /**
-       * A URL to redirect after the user authenticates with the provider
-       * @default "/"
-       */
-      callbackURL: "/dashboard", 
-      /**
-       * A URL to redirect if an error occurs during the sign in process
-       */
-      errorCallbackURL: "/error",
-      /**
-       * A URL to redirect if the user is newly registered
-       */
-      newUserCallbackURL: "/dashboard",
-      /**
-       * disable the automatic redirect to the provider. 
-       * @default false
-       */
-      
-  }); /* your logic here */
+    const toastId = "social-google-login";
+    try {
+      setSocialLoadingProvider("google");
+      toast.loading("Logging you in with Google...", { id: toastId });
 
-    
+      await authClient.signIn.social({
+        provider: "google",
+        callbackURL: "/dashboard",
+        errorCallbackURL: "/error",
+        newUserCallbackURL: "/dashboard",
+      });
+
+      toast.success("Logged in. Redirecting to Google...", { id: toastId });
+    } catch {
+      toast.error("Google login failed. Please try again.", { id: toastId });
+      setSocialLoadingProvider(null);
+    }
+
   };
 
   const handleGithubLogin = async () => {
-    await authClient.signIn.social({
-      /**
-       * The social provider ID
-       * @example "github", "google", "apple"
-       */
-      provider: "github",
-      /**
-       * A URL to redirect after the user authenticates with the provider
-       * @default "/"
-       */
-      callbackURL: "/dashboard", 
-      /**
-       * A URL to redirect if an error occurs during the sign in process
-       */
-      errorCallbackURL: "/error",
-      /**
-       * A URL to redirect if the user is newly registered
-       */
-      newUserCallbackURL: "/dashboard",
-      /**
-       * disable the automatic redirect to the provider. 
-       * @default false
-       */
-      
-  }); /* your logic here */
+    const toastId = "social-github-login";
+    try {
+      setSocialLoadingProvider("github");
+      toast.loading("Logging you in with GitHub...", { id: toastId });
 
-  
+      await authClient.signIn.social({
+        provider: "github",
+        callbackURL: "/dashboard",
+        errorCallbackURL: "/error",
+        newUserCallbackURL: "/dashboard",
+      });
+
+      toast.success("Logged in. Redirecting to GitHub...", { id: toastId });
+    } catch {
+      toast.error("GitHub login failed. Please try again.", { id: toastId });
+      setSocialLoadingProvider(null);
+    }
+
   };
 
   return (
@@ -126,17 +108,19 @@ setLoading(false);
         <div className="flex items-center gap-4 mt-6">
           <button
             onClick={handleGithubLogin}
+            disabled={loading || socialLoadingProvider !== null}
             className="w-full border border-gray-300 rounded-lg py-2 flex justify-center items-center gap-2 hover:bg-gray-100"
           >
-            <FaGithub className="text-xl" />
-            GitHub
+            {socialLoadingProvider === "github" ? <Loader2 className="h-5 w-5 animate-spin" /> : <FaGithub className="text-xl" />}
+            {socialLoadingProvider === "github" ? "Logging you in..." : "GitHub"}
           </button>
           <button
             onClick={handleGoogleLogin}
+            disabled={loading || socialLoadingProvider !== null}
             className="w-full border border-gray-300 rounded-lg py-2 flex justify-center items-center gap-2 hover:bg-gray-100"
           >
-            <FcGoogle className="text-xl" />
-            Google
+            {socialLoadingProvider === "google" ? <Loader2 className="h-5 w-5 animate-spin" /> : <FcGoogle className="text-xl" />}
+            {socialLoadingProvider === "google" ? "Logging you in..." : "Google"}
           </button>
         </div>
 
