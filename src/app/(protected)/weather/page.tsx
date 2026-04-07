@@ -259,8 +259,8 @@ export default function WeatherPage() {
         </div>
       </div> */}
 
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 lg:py-12 space-y-10">
-        <section className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-end">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-6 lg:py-8 space-y-10">
+        <section className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
           <div className="lg:col-span-2 space-y-4">
             <div className="flex items-center gap-2 text-[#3d4a3f] font-medium">
               <MapPin className="h-4 w-4 text-[#1f8f4d]" />
@@ -282,11 +282,11 @@ export default function WeatherPage() {
             </div>
           </div>
 
-          <div className="relative h-64 lg:h-80 w-full rounded-3xl overflow-hidden group shadow-xl shadow-emerald-200/40">
+          <div className="relative h-64 lg:h-80 w-full rounded-3xl overflow-hidden group shadow-xl shadow-emerald-200/40 lg:-mt-2">
             <img
-              alt="City skyline under weather conditions"
+              alt="Nature landscape for local time"
               className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuDBr3XyqB4ilJLvu3-RGEIJ8F7SG-dqDLDqPIMUy3XWpCZMCt43wMF8YPz_14ZUDZPYpBRHEuICYptAL7eN_1lWhvOn2oC5p4-Eeo7HPP8NVqIJA5Vojowi4A1YDyZzfjRwuqpVgi9el3Ygku1AdqhZTdsGHm5Q7YvMVmGlifyNqHMscgu_8BP95lHAyo08MizIIoglQQ317z75_FPrpGY8PTXXpZLJiIDOR3SjGpMaPsWLAsKAvY9KNPNcIOA9m8Hsj6qMdTDTQIph"
+              src="https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=1400&q=80"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-[#0b5a2e]/60 to-transparent" />
             <div className="absolute bottom-6 left-6 text-white">
@@ -299,10 +299,10 @@ export default function WeatherPage() {
         </section>
 
         <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="lg:col-span-2 rounded-3xl p-8 space-y-6 relative overflow-hidden border border-emerald-100 bg-white/70 backdrop-blur-md">
+          <div className="lg:col-span-2 rounded-3xl p-8 space-y-6 relative overflow-hidden border border-emerald-100 bg-white/70 backdrop-blur-md lg:-mt-2">
             <div className="relative z-10">
               <div className="flex items-center gap-3 mb-8">
-                <div className="h-12 w-12 shrink-0 rounded-full bg-[#ffdad6] text-[#ba1a1a] flex items-center justify-center">
+                <div className="h-12 w-12 shrink-0 text-[#ba1a1a] flex items-center justify-center">
                   <Droplets className="h-5 w-5" />
                 </div>
                 <div>
@@ -322,7 +322,7 @@ export default function WeatherPage() {
 
           <div className="rounded-3xl p-8 flex flex-col justify-between border border-emerald-100 bg-white/70 backdrop-blur-md">
             <div className="space-y-4">
-              <div className="h-10 w-10 shrink-0 rounded-full bg-emerald-100 text-[#006d37] flex items-center justify-center">
+              <div className="h-10 w-10 shrink-0 text-[#006d37] flex items-center justify-center">
                 <AirVent className="h-5 w-5" />
               </div>
               <h4 className="text-lg font-bold">Air Quality</h4>
@@ -336,7 +336,7 @@ export default function WeatherPage() {
 
           <div className="rounded-3xl p-8 flex flex-col justify-between border border-emerald-100 bg-white/70 backdrop-blur-md">
             <div className="space-y-4">
-              <div className="h-10 w-10 shrink-0 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center">
+              <div className="h-10 w-10 shrink-0 text-amber-600 flex items-center justify-center">
                 <Sun className="h-5 w-5" />
               </div>
               <h4 className="text-lg font-bold">UV Exposure</h4>
@@ -390,7 +390,7 @@ export default function WeatherPage() {
             <div className="space-y-4">
               <div className="flex items-center justify-between p-4 bg-emerald-50 rounded-2xl">
                 <div className="flex items-center gap-3">
-                  <span className="h-8 w-8 shrink-0 rounded-full bg-white text-[#1f8f4d] flex items-center justify-center">
+                  <span className="h-8 w-8 shrink-0 text-[#1f8f4d] flex items-center justify-center">
                     <Gauge className="h-4 w-4" />
                   </span>
                   <span className="text-sm font-medium">Barometric Pressure</span>
@@ -400,7 +400,7 @@ export default function WeatherPage() {
 
               <div className="flex items-center justify-between p-4 bg-emerald-50 rounded-2xl">
                 <div className="flex items-center gap-3">
-                  <span className="h-8 w-8 shrink-0 rounded-full bg-white text-[#1f8f4d] flex items-center justify-center">
+                  <span className="h-8 w-8 shrink-0 text-[#1f8f4d] flex items-center justify-center">
                     <Eye className="h-4 w-4" />
                   </span>
                   <span className="text-sm font-medium">Visibility</span>
@@ -412,7 +412,7 @@ export default function WeatherPage() {
 
               <div className="flex items-center justify-between p-4 bg-emerald-50 rounded-2xl">
                 <div className="flex items-center gap-3">
-                  <span className="h-8 w-8 shrink-0 rounded-full bg-white text-[#1f8f4d] flex items-center justify-center">
+                  <span className="h-8 w-8 shrink-0 text-[#1f8f4d] flex items-center justify-center">
                     <Wind className="h-4 w-4" />
                   </span>
                   <span className="text-sm font-medium">Wind Velocity</span>
@@ -422,7 +422,7 @@ export default function WeatherPage() {
 
               <div className="flex items-center justify-between p-4 bg-emerald-50 rounded-2xl">
                 <div className="flex items-center gap-3">
-                  <span className="h-8 w-8 shrink-0 rounded-full bg-white text-[#1f8f4d] flex items-center justify-center">
+                  <span className="h-8 w-8 shrink-0 text-[#1f8f4d] flex items-center justify-center">
                     <Thermometer className="h-4 w-4" />
                   </span>
                   <span className="text-sm font-medium">Dew Point</span>

@@ -1,135 +1,138 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  getUserMemories,
-  deleteMemory,
-  deleteAllMemories,
-} from "@/lib/actions/memory";
+import { Brain, Loader2, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { deleteAllMemories, deleteMemory, getUserMemories } from "@/lib/actions/memory";
 
 type Memory = {
-  id: string;
-  text: string;
+	id: string;
+	text: string;
 };
 
 export default function MemoriesPage() {
-  const [memories, setMemories] = useState<Memory[]>([]);
-  const [loading, setLoading] = useState(true);
+	const [memories, setMemories] = useState<Memory[]>([]);
+	const [loading, setLoading] = useState(true);
+	const [deletingId, setDeletingId] = useState<string | null>(null);
+	const [deletingAll, setDeletingAll] = useState(false);
 
-  // confirmation state
-  const [confirmId, setConfirmId] = useState<string | null>(null);
-  const [confirmAll, setConfirmAll] = useState(false);
+	const loadMemories = async () => {
+		try {
+			setLoading(true);
+			const data = await getUserMemories();
+			setMemories(data || []);
+		} catch (error) {
+			console.error(error);
+			toast.error("Unable to load memories.");
+		} finally {
+			setLoading(false);
+		}
+	};
 
-  const fetchMemories = async () => {
-    setLoading(true);
-    const data = await getUserMemories();
-    setMemories(data);
-    setLoading(false);
-  };
+	useEffect(() => {
+		loadMemories();
+	}, []);
 
-  useEffect(() => {
-    fetchMemories();
-  }, []);
+	const handleDeleteOne = async (id: string) => {
+		try {
+			setDeletingId(id);
+			await deleteMemory(id);
+			setMemories((prev) => prev.filter((m) => m.id !== id));
+			toast.success("Memory deleted.");
+		} catch (error) {
+			console.error(error);
+			toast.error("Unable to delete memory.");
+		} finally {
+			setDeletingId(null);
+		}
+	};
 
-  // delete one
-  const handleDelete = async (id: string) => {
-    await deleteMemory(id);
-    setMemories((prev) => prev.filter((m) => m.id !== id));
-    setConfirmId(null);
-  };
+	const handleDeleteAll = async () => {
+		try {
+			setDeletingAll(true);
+			await deleteAllMemories();
+			setMemories([]);
+			toast.success("All memories deleted.");
+		} catch (error) {
+			console.error(error);
+			toast.error("Unable to delete all memories.");
+		} finally {
+			setDeletingAll(false);
+		}
+	};
 
-  // delete all
-  const handleDeleteAll = async () => {
-    await deleteAllMemories();
-    setMemories([]);
-    setConfirmAll(false);
-  };
+	if (loading) {
+		return (
+			<div className="min-h-screen bg-slate-50 p-4 md:p-8">
+				<div className="max-w-3xl mx-auto space-y-6 animate-pulse">
+					<div className="h-10 w-52 bg-slate-200 rounded" />
+					<div className="h-5 w-80 bg-slate-200 rounded" />
+					<div className="space-y-4">
+						<div className="h-28 bg-white border rounded-2xl" />
+						<div className="h-28 bg-white border rounded-2xl" />
+						<div className="h-28 bg-white border rounded-2xl" />
+					</div>
+					<div className="inline-flex items-center gap-2 text-slate-600">
+						<Loader2 className="h-4 w-4 animate-spin" />
+						Loading memories...
+					</div>
+				</div>
+			</div>
+		);
+	}
 
-  if (loading) {
-    return <p className="p-6 text-center">Loading memories...</p>;
-  }
+	return (
+		<div className="min-h-screen bg-[radial-gradient(circle_at_50%_-20%,#e8f7ef_0%,#f8fafc_45%,#f8fafc_100%)] p-4 md:p-8">
+			<div className="max-w-3xl mx-auto">
+				<div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8">
+					<div>
+						<h1 className="text-3xl md:text-4xl font-bold text-slate-900 tracking-tight">Your Memories</h1>
+						<p className="text-slate-600 mt-2">A clean timeline of your saved health context.</p>
+					</div>
 
-  return (
-    <div className="max-w-2xl mx-auto p-6 py-8">
-      <h1 className="text-2xl md:text-5xl font-bold mb-6"> Your Memories</h1>
+					{memories.length > 0 && (
+						<button
+							onClick={handleDeleteAll}
+							disabled={deletingAll}
+							className="inline-flex items-center justify-center gap-2 rounded-full border border-red-200 bg-white/90 backdrop-blur px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
+						>
+							{deletingAll ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+							Delete All
+						</button>
+					)}
+				</div>
 
-      {memories.length === 0 ? (
-        <p className="text-gray-500">No memories found.</p>
-      ) : (
-        <div className="space-y-4">
-          {memories.map((m) => (
-            <div
-              key={m.id}
-              className="relative border rounded-lg p-4 flex justify-between items-center"
-            >
-              <p className="text-sm pr-4">{m.text}</p>
-
-              <div className="relative">
-                <button
-                  onClick={() => setConfirmId(m.id)}
-                  className="text-red-500 hover:text-red-700 text-sm"
-                >
-                  Delete
-                </button>
-
-                {/* ✅ SMALL RIGHT-SIDE CONFIRMATION */}
-                {confirmId === m.id && (
-                  <div className="absolute right-0 top-8 w-44 bg-white border shadow-lg rounded-md p-3 text-xs z-10">
-                    <p className="mb-2">Delete this memory?</p>
-                    <div className="flex justify-end gap-2">
-                      <button
-                        onClick={() => setConfirmId(null)}
-                        className="text-gray-500"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={() => handleDelete(m.id)}
-                        className="text-red-500 font-medium"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* DELETE ALL BUTTON */}
-      {memories.length > 0 && (
-        <div className="mt-6 relative">
-          <button
-            onClick={() => setConfirmAll(true)}
-            className="bg-white border-gray-200 border-2 rounded-md text-red-800 px-4 py-2 rounded-md"
-          >
-            Delete All Memories
-          </button>
-
-          {/* ✅ RIGHT SIDE CONFIRM FOR DELETE ALL */}
-          {confirmAll && (
-            <div className="absolute right-0 mt-2 w-48 bg-white border shadow-lg rounded-md p-3 text-xs">
-              <p className="mb-2">Delete ALL memories?</p>
-              <div className="flex justify-end gap-2">
-                <button
-                  onClick={() => setConfirmAll(false)}
-                  className="text-gray-500"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleDeleteAll}
-                  className="text-red-500 font-medium"
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
+				{memories.length === 0 ? (
+					<div className="rounded-2xl border border-emerald-100 bg-white/85 backdrop-blur p-10 text-center shadow-[0_10px_30px_rgba(15,23,42,0.06)]">
+						<div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+							<Brain className="h-7 w-7" />
+						</div>
+						<h2 className="text-xl font-semibold text-slate-900">No memories yet</h2>
+						<p className="text-slate-600 mt-2">Memories will appear here as the assistant learns your preferences.</p>
+					</div>
+				) : (
+					<div className="space-y-4">
+						{memories.map((memory) => (
+							<article
+								key={memory.id}
+								className="group rounded-2xl border border-emerald-100 bg-white/88 backdrop-blur px-5 py-4 shadow-[0_10px_30px_rgba(15,23,42,0.05)] transition-all hover:shadow-[0_16px_35px_rgba(16,185,129,0.12)]"
+							>
+								<div className="flex items-start justify-between gap-3">
+									<p className="text-slate-700 leading-relaxed text-[15px]">{memory.text}</p>
+									<button
+										onClick={() => handleDeleteOne(memory.id)}
+										disabled={deletingId === memory.id}
+										className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-red-600 hover:bg-red-50 disabled:opacity-60"
+										aria-label="Delete memory"
+									>
+										{deletingId === memory.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+									</button>
+								</div>
+							</article>
+						))}
+					</div>
+				)}
+			</div>
+		</div>
+	);
 }
