@@ -1,506 +1,473 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Progress } from "@/components/ui/progress"
-import { RefreshCw, MapPin, Wind, Droplets, Thermometer, Sun, Activity, Heart, Shield, TrendingUp, ChevronLeft } from "lucide-react"
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
+import Link from "next/link";
 import {
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-  PieChart,
-  Pie,
-  Cell,
-} from "recharts"
-import { toast } from "sonner"
-import Link from "next/link"
+  AirVent,
+  Cloud,
+  CloudDrizzle,
+  CloudFog,
+  CloudLightning,
+  CloudMoon,
+  CloudRain,
+  CloudSun,
+  Droplets,
+  Eye,
+  Gauge,
+  MapPin,
+  MessageCircle,
+  MoonStar,
+  Snowflake,
+  Sun,
+  Thermometer,
+  Wind,
+} from "lucide-react";
 
-export default function Home() {
-  const [data, setData] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
+type ForecastSlot = {
+  key: number;
+  dayLabel: string;
+  time: string;
+  temp: number;
+  barHeight: number;
+  isActive: boolean;
+  kind:
+    | "clear-day"
+    | "clear-night"
+    | "partly-cloudy-day"
+    | "partly-cloudy-night"
+    | "cloud"
+    | "rain"
+    | "drizzle"
+    | "thunder"
+    | "snow"
+    | "fog";
+};
 
-  const fetchWeatherData = async () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(async (pos) => {
-        const { latitude, longitude } = pos.coords
+export default function WeatherPage() {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(null);
+  const [now, setNow] = useState(new Date());
 
-        const res = await fetch("/api/weather", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ lat: latitude, lon: longitude }),
-        })
+  const fetchWeatherData = async (lat: number, lon: number, silent = false) => {
+    try {
+      const res = await fetch("/api/weather", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lat, lon }),
+      });
 
-        const result = await res.json()
-        setData(result)
-        setLoading(false)
-        setRefreshing(false)
-      })
-    } else {
-toast.error("Geolocation is not supported by your browser.")
-      setLoading(false)
-      setRefreshing(false)
+      const result = await res.json();
+      setData(result);
+    } catch {
+      if (!silent) {
+        toast.error("Unable to load weather data right now.");
+      }
+    } finally {
+      if (!silent) {
+        setLoading(false);
+      }
     }
-  }
+  };
 
   useEffect(() => {
-    fetchWeatherData()
-  }, [])
+    if (!navigator.geolocation) {
+      toast.error("Geolocation is not supported by your browser.");
+      setLoading(false);
+      return;
+    }
 
-  const handleRefresh = () => {
-    setRefreshing(true)
-    fetchWeatherData()
-  }
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const nextCoords = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+        setCoords(nextCoords);
+        await fetchWeatherData(nextCoords.lat, nextCoords.lon);
+      },
+      () => {
+        toast.error("Location permission denied. Enable location to see weather impact.");
+        setLoading(false);
+      }
+    );
+  }, []);
+
+  useEffect(() => {
+    const clockTimer = window.setInterval(() => {
+      setNow(new Date());
+    }, 1000);
+
+    return () => window.clearInterval(clockTimer);
+  }, []);
+
+  useEffect(() => {
+    if (!coords) return;
+
+    const weatherTimer = window.setInterval(() => {
+      fetchWeatherData(coords.lat, coords.lon, true);
+    }, 60_000);
+
+    return () => window.clearInterval(weatherTimer);
+  }, [coords]);
+
+  const weather = data?.weather;
+  const air = data?.air?.list?.[0]?.main;
+  const uv = data?.uv;
+  const forecast = data?.forecast;
+
+  const aqiLabel = useMemo(() => {
+    const map: Record<number, string> = {
+      1: "Good",
+      2: "Fair",
+      3: "Moderate",
+      4: "Poor",
+      5: "Very Poor",
+    };
+    return map[air?.aqi ?? 0] || "Unknown";
+  }, [air?.aqi]);
+
+  const uvLabel = useMemo(() => {
+    if (!uv?.value) return "Unknown";
+    if (uv.value <= 2) return "Low";
+    if (uv.value <= 5) return "Moderate";
+    if (uv.value <= 7) return "High";
+    if (uv.value <= 10) return "Very High";
+    return "Extreme";
+  }, [uv?.value]);
+
+  const humidityNote = useMemo(() => {
+    const humidity = weather?.main?.humidity;
+    if (typeof humidity !== "number") return "No humidity data available.";
+    if (humidity >= 70) return "Higher ambient moisture can increase fatigue. Add extra hydration today.";
+    if (humidity <= 35) return "Low humidity can cause dryness. Keep hydration balanced through the day.";
+    return "Humidity is in a comfortable range for most activities.";
+  }, [weather?.main?.humidity]);
+
+  const extendedForecast = useMemo((): ForecastSlot[] => {
+    const source = forecast?.list || [];
+    if (source.length === 0) return [];
+
+    const getKind = (main: string, iconCode: string): ForecastSlot["kind"] => {
+      const condition = main.toLowerCase();
+      const isNight = iconCode.endsWith("n");
+
+      if (condition.includes("thunder")) return "thunder";
+      if (condition.includes("drizzle")) return "drizzle";
+      if (condition.includes("rain")) return "rain";
+      if (condition.includes("snow")) return "snow";
+      if (condition.includes("mist") || condition.includes("fog") || condition.includes("haze")) return "fog";
+      if (condition.includes("cloud")) return isNight ? "partly-cloudy-night" : "partly-cloudy-day";
+      if (condition.includes("clear")) return isNight ? "clear-night" : "clear-day";
+      return "cloud";
+    };
+
+    const firstDate = new Date(Number(source[0].dt) * 1000);
+    const roundedStart = new Date(firstDate);
+    roundedStart.setMinutes(0, 0, 0);
+    if (roundedStart < firstDate) {
+      roundedStart.setHours(roundedStart.getHours() + 1);
+    }
+    const startHourTs = Math.floor(roundedStart.getTime() / 1000);
+    const hoursToShow = 36;
+
+    const slots = Array.from({ length: hoursToShow }, (_, index) => {
+      const targetTs = startHourTs + index * 3600;
+
+      const nextIndex = source.findIndex((entry: any) => Number(entry.dt) >= targetTs);
+      const prevEntry = nextIndex <= 0 ? source[0] : source[nextIndex - 1];
+      const nextEntry = nextIndex === -1 ? source[source.length - 1] : source[nextIndex];
+
+      const prevTs = Number(prevEntry?.dt ?? targetTs);
+      const nextTs = Number(nextEntry?.dt ?? targetTs);
+      const ratio = nextTs === prevTs ? 0 : (targetTs - prevTs) / (nextTs - prevTs);
+
+      const prevTemp = Number(prevEntry?.main?.temp ?? 0);
+      const nextTemp = Number(nextEntry?.main?.temp ?? prevTemp);
+      const interpolatedTemp = prevTemp + (nextTemp - prevTemp) * Math.max(0, Math.min(1, ratio));
+
+      const conditionSource = ratio < 0.5 ? prevEntry : nextEntry;
+      const mainCondition = String(conditionSource?.weather?.[0]?.main || "Clouds");
+      const iconCode = String(conditionSource?.weather?.[0]?.icon || "03d");
+
+      const slotDate = new Date(targetTs * 1000);
+      const sameDay = slotDate.toDateString() === now.toDateString();
+
+      return {
+        key: targetTs,
+        dayLabel: sameDay ? "Today" : slotDate.toLocaleDateString([], { weekday: "short" }),
+        time: `${slotDate.getHours().toString().padStart(2, "0")}:00`,
+        temp: Math.round(interpolatedTemp),
+        barHeight: 40,
+        isActive: index === 0,
+        kind: getKind(mainCondition, iconCode),
+      };
+    });
+
+    const temps = slots.map((slot) => slot.temp);
+    const minTemp = Math.min(...temps);
+    const maxTemp = Math.max(...temps);
+    const spread = Math.max(1, maxTemp - minTemp);
+
+    return slots.map((slot) => ({
+      ...slot,
+      barHeight: 22 + ((slot.temp - minTemp) / spread) * 64,
+    }));
+  }, [forecast?.list, now]);
+
+  const ForecastIcon = ({ kind, active }: { kind: ForecastSlot["kind"]; active: boolean }) => {
+    if (kind === "clear-day") return <Sun className={`h-5 w-5 ${active ? "text-white" : "text-amber-500"}`} />;
+    if (kind === "clear-night") return <MoonStar className={`h-5 w-5 ${active ? "text-white" : "text-indigo-500"}`} />;
+    if (kind === "partly-cloudy-day") return <CloudSun className={`h-5 w-5 ${active ? "text-white" : "text-amber-500"}`} />;
+    if (kind === "partly-cloudy-night") return <CloudMoon className={`h-5 w-5 ${active ? "text-white" : "text-indigo-500"}`} />;
+    if (kind === "rain") return <CloudRain className={`h-5 w-5 ${active ? "text-white" : "text-blue-500"}`} />;
+    if (kind === "drizzle") return <CloudDrizzle className={`h-5 w-5 ${active ? "text-white" : "text-cyan-500"}`} />;
+    if (kind === "thunder") return <CloudLightning className={`h-5 w-5 ${active ? "text-white" : "text-yellow-500"}`} />;
+    if (kind === "snow") return <Snowflake className={`h-5 w-5 ${active ? "text-white" : "text-sky-500"}`} />;
+    if (kind === "fog") return <CloudFog className={`h-5 w-5 ${active ? "text-white" : "text-slate-500"}`} />;
+    return <Cloud className={`h-5 w-5 ${active ? "text-white" : "text-slate-600"}`} />;
+  };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-secondary">
-        <div className="text-center space-y-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="text-lg text-muted-foreground">Loading weather & air quality data...</p>
+      <div className="min-h-screen bg-[#f7fbf8] flex items-center justify-center px-4">
+        <div className="text-center">
+          <div className="h-12 w-12 rounded-full border-4 border-[#1f8f4d] border-t-transparent animate-spin mx-auto" />
+          <p className="mt-4 text-[#3d4a3f] font-medium">Loading weather impact dashboard...</p>
         </div>
       </div>
-    )
+    );
   }
-
-  const weather = data?.weather
-  const air = data?.air?.list?.[0]?.main
-  const uv = data?.uv
-  const forecast = data?.forecast
-  console.log("weatherdata",data)
-
-  const getUVInfo = (uvIndex: number) => {
-    if (uvIndex <= 2)
-      return { level: "Low", color: "bg-green-500", textColor: "text-green-600", advice: "Safe to be outside" }
-    if (uvIndex <= 5)
-      return {
-        level: "Moderate",
-        color: "bg-yellow-500",
-        textColor: "text-yellow-600",
-        advice: "Seek shade during midday",
-      }
-    if (uvIndex <= 7)
-      return { level: "High", color: "bg-orange-500", textColor: "text-orange-600", advice: "Protection required" }
-    if (uvIndex <= 10)
-      return { level: "Very High", color: "bg-red-500", textColor: "text-red-600", advice: "Extra protection required" }
-    return { level: "Extreme", color: "bg-purple-600", textColor: "text-purple-600", advice: "Avoid being outside" }
-  }
-
-  const getComfortLevel = (temp: number, humidity: number) => {
-    const heatIndex = temp + 0.5 * (humidity - 10)
-    if (heatIndex < 21) return { level: "Cool", color: "bg-blue-500", comfort: 85 }
-    if (heatIndex < 27) return { level: "Comfortable", color: "bg-green-500", comfort: 95 }
-    if (heatIndex < 32) return { level: "Warm", color: "bg-yellow-500", comfort: 70 }
-    if (heatIndex < 38) return { level: "Hot", color: "bg-orange-500", comfort: 45 }
-    return { level: "Dangerous", color: "bg-red-500", comfort: 20 }
-  }
-
-  const temperatureTrend =
-    forecast?.list?.slice(0, 8)?.map((item: any, index: number) => ({
-      time: `${index * 3}h`,
-      temp: Math.round(item.main.temp),
-      feels_like: Math.round(item.main.feels_like),
-      humidity: item.main.humidity,
-    })) || []
-
-  const healthMetrics = [
-    { name: "Air Quality", value: air?.aqi ? (air.aqi / 5) * 100 : 0, color: "#8884d8" },
-    { name: "UV Safety", value: uv?.value ? Math.max(0, 100 - uv.value * 10) : 50, color: "#82ca9d" },
-    {
-      name: "Comfort Level",
-      value: weather?.main ? getComfortLevel(weather.main.temp, weather.main.humidity).comfort : 50,
-      color: "#ffc658",
-    },
-  ]
-
-  const getAQIInfo = (aqi: number) => {
-    const aqiData = {
-      1: {
-        label: "Good",
-        emoji: "😀",
-        color: "bg-chart-1 text-white",
-        description: "Air quality is satisfactory",
-        textColor: "text-chart-1",
-      },
-      2: {
-        label: "Fair",
-        emoji: "🙂",
-        color: "bg-chart-2 text-white",
-        description: "Acceptable for most people",
-        textColor: "text-chart-2",
-      },
-      3: {
-        label: "Moderate",
-        emoji: "😐",
-        color: "bg-orange-500 text-white",
-        description: "Sensitive groups may experience symptoms",
-        textColor: "text-orange-600",
-      },
-      4: {
-        label: "Poor",
-        emoji: "😷",
-        color: "bg-chart-3 text-white",
-        description: "Health effects for sensitive groups",
-        textColor: "text-chart-3",
-      },
-      5: {
-        label: "Very Poor",
-        emoji: "🤢",
-        color: "bg-purple-600 text-white",
-        description: "Health warnings for everyone",
-        textColor: "text-purple-600",
-      },
-    }
-    return aqiData[aqi as keyof typeof aqiData] || aqiData[1]
-  }
-
-  const aqiInfo = air?.aqi ? getAQIInfo(air.aqi) : null
-  const uvInfo = uv?.value ? getUVInfo(uv.value) : null
-  const comfortInfo = weather?.main ? getComfortLevel(weather.main.temp, weather.main.humidity) : null
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-secondary/30 to-background p-4 md:p-6">
-
-        
-      <div className="max-w-7xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
-        <Link href={"/dashboard"}><ChevronLeft/></Link>
-          <div>
-            <h1 className="text-3xl md:text-4xl font-bold text-balance">Health & Environment Monitor</h1>
-            <p className="text-muted-foreground mt-1">Real-time health-focused environmental data</p>
+    <div className="min-h-screen bg-[radial-gradient(circle_at_20%_0%,#e4f8ed_0%,#f7fbf8_35%,#f5f8f6_100%)] text-[#191c1b]">
+      {/* <div className="sticky top-0 z-30 bg-white/70 backdrop-blur-xl border-b border-emerald-100">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex items-center gap-4">
+          <h1 className="text-lg md:text-xl font-bold text-emerald-950">Weather Impact</h1>
+          <div className="relative ml-auto w-full max-w-md">
+            <Search className="h-4 w-4 text-emerald-600/70 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              className="w-full bg-emerald-50 border border-emerald-100 rounded-full pl-9 pr-4 py-2 text-sm focus:ring-2 focus:ring-emerald-300 outline-none"
+              placeholder="Location or health query..."
+              type="text"
+            />
           </div>
-          <Button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            variant="outline"
-            size="sm"
-            className="gap-2 bg-transparent"
-          >
-            <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
-            Refresh
-          </Button>
+          <button className="h-10 w-10 shrink-0 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center hover:bg-emerald-100 transition-colors">
+            <Bell className="h-5 w-5" />
+          </button>
+          <button className="h-10 w-10 shrink-0 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center hover:bg-emerald-100 transition-colors">
+            <UserCircle2 className="h-5 w-5" />
+          </button>
         </div>
+      </div> */}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="md:col-span-2 lg:col-span-1">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2">
-                <MapPin className="h-5 w-5 text-primary" />
-                Current Conditions
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="text-center">
-                <p className="text-sm text-muted-foreground">{weather?.name || "Unknown Location"}</p>
-                <div className="flex items-center justify-center gap-2 mt-2">
-                  <Thermometer className="h-6 w-6 text-primary" />
-                  <span className="text-4xl font-bold">{Math.round(weather?.main?.temp) || "--"}°C</span>
-                </div>
-                <p className="text-lg capitalize text-muted-foreground mt-1">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 lg:py-12 space-y-10">
+        <section className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-end">
+          <div className="lg:col-span-2 space-y-4">
+            <div className="flex items-center gap-2 text-[#3d4a3f] font-medium">
+              <MapPin className="h-4 w-4 text-[#1f8f4d]" />
+              <span>
+                {weather?.name || "Unknown"}
+                {weather?.sys?.country ? `, ${weather.sys.country}` : ""}
+              </span>
+            </div>
+            <div className="flex items-baseline gap-6">
+              <h2 className="text-[4rem] md:text-[5rem] lg:text-[7rem] font-extrabold leading-none tracking-tighter">
+                {Math.round(weather?.main?.temp ?? 0)}°C
+              </h2>
+              <div className="space-y-1">
+                <p className="text-xl md:text-2xl font-semibold text-[#1f8f4d] capitalize">
                   {weather?.weather?.[0]?.description || "No data"}
                 </p>
+                <p className="text-[#3d4a3f]">Feels like {Math.round(weather?.main?.feels_like ?? 0)}°C</p>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2">
-                <Wind className="h-5 w-5 text-primary" />
-                Wind & Air Movement
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center space-y-2">
-                <div className="text-2xl font-semibold">{weather?.wind?.speed || "--"} m/s</div>
-                <p className="text-sm text-muted-foreground">Speed</p>
-                {weather?.wind?.deg && (
-                  <div className="text-sm">
-                    <span className="text-muted-foreground">Direction: </span>
-                    <span className="font-medium">{weather.wind.deg}°</span>
-                  </div>
-                )}
-                <div className="mt-2 p-2 bg-muted rounded text-xs">Good air circulation helps disperse pollutants</div>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="relative h-64 lg:h-80 w-full rounded-3xl overflow-hidden group shadow-xl shadow-emerald-200/40">
+            <img
+              alt="City skyline under weather conditions"
+              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+              src="https://lh3.googleusercontent.com/aida-public/AB6AXuDBr3XyqB4ilJLvu3-RGEIJ8F7SG-dqDLDqPIMUy3XWpCZMCt43wMF8YPz_14ZUDZPYpBRHEuICYptAL7eN_1lWhvOn2oC5p4-Eeo7HPP8NVqIJA5Vojowi4A1YDyZzfjRwuqpVgi9el3Ygku1AdqhZTdsGHm5Q7YvMVmGlifyNqHMscgu_8BP95lHAyo08MizIIoglQQ317z75_FPrpGY8PTXXpZLJiIDOR3SjGpMaPsWLAsKAvY9KNPNcIOA9m8Hsj6qMdTDTQIph"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0b5a2e]/60 to-transparent" />
+            <div className="absolute bottom-6 left-6 text-white">
+              <p className="text-xs uppercase tracking-widest opacity-80">Local Time</p>
+              <p className="text-2xl font-bold">
+                {now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })}
+              </p>
+            </div>
+          </div>
+        </section>
 
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2">
-                <Droplets className="h-5 w-5 text-primary" />
-                Humidity & Comfort
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Humidity</span>
-                <span className="font-medium">{weather?.main?.humidity || "--"}%</span>
-              </div>
-              <Progress value={weather?.main?.humidity || 0} className="h-2" />
-              <div className="text-xs text-muted-foreground">
-                {weather?.main?.humidity > 60
-                  ? "High humidity may feel uncomfortable"
-                  : weather?.main?.humidity < 30
-                    ? "Low humidity may cause dry skin"
-                    : "Comfortable humidity level"}
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Feels like</span>
-                <span className="font-medium">{Math.round(weather?.main?.feels_like) || "--"}°C</span>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2">
-                <Activity className="h-5 w-5 text-primary" />
-                Health Recommendations
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <div className="space-y-2 text-sm">
-                {air?.aqi > 3 && (
-                  <div className="p-2 bg-red-50 text-red-700 rounded text-xs">⚠️ Limit outdoor activities</div>
-                )}
-                {uv?.value > 6 && (
-                  <div className="p-2 bg-orange-50 text-orange-700 rounded text-xs">
-                    ☀️ Use sunscreen & protective clothing
-                  </div>
-                )}
-                {weather?.main?.temp > 30 && (
-                  <div className="p-2 bg-yellow-50 text-yellow-700 rounded text-xs">🌡️ Stay hydrated & seek shade</div>
-                )}
-                {weather?.main?.temp < 5 && (
-                  <div className="p-2 bg-blue-50 text-blue-700 rounded text-xs">
-                    🧥 Dress warmly & protect extremities
-                  </div>
-                )}
-                {(!air?.aqi || air.aqi <= 2) &&
-                  (!uv?.value || uv.value <= 5) &&
-                  weather?.main?.temp >= 15 &&
-                  weather?.main?.temp <= 25 && (
-                    <div className="p-2 bg-green-50 text-green-700 rounded text-xs">
-                      ✅ Great conditions for outdoor activities!
-                    </div>
-                  )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="border-2 shadow-lg">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Shield className="h-5 w-5 text-blue-500" />
-                Air Quality Health
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {aqiInfo ? (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className={`text-3xl font-bold ${aqiInfo.textColor}`}>{air.aqi}/5</div>
-                    <Badge className={aqiInfo.color}>{aqiInfo.label}</Badge>
-                  </div>
-                  <Progress value={(air.aqi / 5) * 100} className="h-2" />
-                  <p className="text-sm text-muted-foreground">{aqiInfo.description}</p>
+        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="lg:col-span-2 rounded-3xl p-8 space-y-6 relative overflow-hidden border border-emerald-100 bg-white/70 backdrop-blur-md">
+            <div className="relative z-10">
+              <div className="flex items-center gap-3 mb-8">
+                <div className="h-12 w-12 shrink-0 rounded-full bg-[#ffdad6] text-[#ba1a1a] flex items-center justify-center">
+                  <Droplets className="h-5 w-5" />
                 </div>
-              ) : (
-                <p className="text-muted-foreground">No data available</p>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="border-2 shadow-lg">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Sun className="h-5 w-5 text-yellow-500" />
-                UV Protection
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {uvInfo ? (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className={`text-3xl font-bold ${uvInfo.textColor}`}>{uv.value.toFixed(1)}</div>
-                    <Badge className={`${uvInfo.color} text-white`}>{uvInfo.level}</Badge>
-                  </div>
-                  <Progress value={Math.min((uv.value / 11) * 100, 100)} className="h-2" />
-                  <p className="text-sm text-muted-foreground">{uvInfo.advice}</p>
+                <div>
+                  <p className="text-xs uppercase tracking-widest text-[#3d4a3f]">Humidity Warning</p>
+                  <h3 className="text-xl font-bold">Clinical Alert: Humidity Impact</h3>
                 </div>
-              ) : (
-                <p className="text-muted-foreground">No UV data available</p>
-              )}
-            </CardContent>
-          </Card>
+              </div>
+              <p className="text-[#3d4a3f] leading-relaxed text-lg mb-8">
+                Ambient moisture is currently at <span className="font-bold text-[#191c1b]">{weather?.main?.humidity ?? "--"}%</span>. {humidityNote}
+              </p>
+              <button className="bg-[#006d37] hover:bg-[#1f8f4d] text-white px-8 py-3 rounded-full font-bold transition-all">
+                Log Hydration
+              </button>
+            </div>
+            <div className="absolute top-0 right-0 w-64 h-64 bg-[#27ae60]/15 blur-[100px] rounded-full -translate-y-1/2 translate-x-1/2" />
+          </div>
 
-          <Card className="border-2 shadow-lg">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Heart className="h-5 w-5 text-red-500" />
-                Comfort Level
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {comfortInfo ? (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="text-3xl font-bold text-primary">{comfortInfo.comfort}%</div>
-                    <Badge className={`${comfortInfo.color} text-white`}>{comfortInfo.level}</Badge>
-                  </div>
-                  <Progress value={comfortInfo.comfort} className="h-2" />
-                  <p className="text-sm text-muted-foreground">Based on temperature & humidity</p>
-                </div>
-              ) : (
-                <p className="text-muted-foreground">No comfort data available</p>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+          <div className="rounded-3xl p-8 flex flex-col justify-between border border-emerald-100 bg-white/70 backdrop-blur-md">
+            <div className="space-y-4">
+              <div className="h-10 w-10 shrink-0 rounded-full bg-emerald-100 text-[#006d37] flex items-center justify-center">
+                <AirVent className="h-5 w-5" />
+              </div>
+              <h4 className="text-lg font-bold">Air Quality</h4>
+              <p className="text-sm text-[#3d4a3f]">Current conditions with health interpretation from AQI index.</p>
+            </div>
+            <div className="mt-8">
+              <span className="text-4xl font-bold text-[#006d37] tracking-tight">{air?.aqi ?? "--"}/5</span>
+              <p className="text-xs font-bold text-[#3d4a3f] mt-2 uppercase tracking-tighter">{aqiLabel}</p>
+            </div>
+          </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card className="border-2 shadow-lg">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-primary" />
-                24-Hour Temperature Trend
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={temperatureTrend}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="time" />
-                    <YAxis />
-                    <Tooltip />
-                    <Area
-                      type="monotone"
-                      dataKey="temp"
-                      stroke="#8884d8"
-                      fill="#8884d8"
-                      fillOpacity={0.3}
-                      name="Temperature (°C)"
+          <div className="rounded-3xl p-8 flex flex-col justify-between border border-emerald-100 bg-white/70 backdrop-blur-md">
+            <div className="space-y-4">
+              <div className="h-10 w-10 shrink-0 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center">
+                <Sun className="h-5 w-5" />
+              </div>
+              <h4 className="text-lg font-bold">UV Exposure</h4>
+              <p className="text-sm text-[#3d4a3f]">Sunlight risk profile for prolonged outdoor activity.</p>
+            </div>
+            <div className="mt-8">
+              <span className="text-4xl font-bold text-amber-600 tracking-tight">{uv?.value?.toFixed?.(1) ?? "--"}</span>
+              <p className="text-xs font-bold text-[#3d4a3f] mt-2 uppercase tracking-tighter">Index: {uvLabel}</p>
+            </div>
+          </div>
+        </section>
+
+        <section className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+          <div className="xl:col-span-2 space-y-6">
+            <div className="flex justify-between items-end gap-3">
+              <div>
+                <h3 className="text-2xl font-bold">Hourly Forecast</h3>
+                <p className="text-[#3d4a3f]">Hour-by-hour timeline for today and tomorrow. Tap any hour for full details.</p>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto pb-2">
+              <div className="flex gap-3 min-w-max">
+              {extendedForecast.map((slot) => (
+                <Link
+                  href={`/weather/${slot.key}`}
+                  key={slot.key}
+                  className={slot.isActive
+                    ? "w-[108px] rounded-2xl p-4 flex flex-col items-center gap-3 shadow-xl shadow-[#006d37]/20 scale-105 bg-[#006d37]"
+                    : "w-[108px] rounded-2xl p-4 flex flex-col items-center gap-3 border border-emerald-100 bg-white/70 backdrop-blur-md transition-all hover:-translate-y-1"
+                  }
+                >
+                  <p className={slot.isActive ? "text-[10px] font-semibold uppercase tracking-widest text-white/70" : "text-[10px] font-semibold uppercase tracking-widest text-[#3d4a3f]"}>{slot.dayLabel}</p>
+                  <p className={slot.isActive ? "text-xs font-bold text-white/70" : "text-xs font-bold text-[#3d4a3f]"}>{slot.time}</p>
+                  <ForecastIcon kind={slot.kind} active={slot.isActive} />
+                  <p className={slot.isActive ? "text-xl font-bold text-white" : "text-xl font-bold text-[#191c1b]"}>{slot.temp}°</p>
+                  <div className={slot.isActive ? "w-1 h-8 bg-white/20 rounded-full relative" : "w-1 h-8 bg-[#dbe4dd] rounded-full relative"}>
+                    <div
+                      className={slot.isActive ? "absolute bottom-0 w-full bg-white rounded-full" : "absolute bottom-0 w-full bg-[#006d37] rounded-full"}
+                      style={{ height: `${slot.barHeight}%` }}
                     />
-                    <Area
-                      type="monotone"
-                      dataKey="feels_like"
-                      stroke="#82ca9d"
-                      fill="#82ca9d"
-                      fillOpacity={0.3}
-                      name="Feels Like (°C)"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
+                  </div>
+                </Link>
+              ))}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
-          <Card className="border-2 shadow-lg">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Activity className="h-5 w-5 text-primary" />
-                Health Impact Overview
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={healthMetrics}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={100}
-                      paddingAngle={5}
-                      dataKey="value"
-                    >
-                      {healthMetrics.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(value) => [`${Math.round(value as number)}%`, "Health Score"]} />
-                  </PieChart>
-                </ResponsiveContainer>
+          <div className="rounded-3xl p-8 border border-emerald-100 bg-white/70 backdrop-blur-md">
+            <h3 className="text-xl font-bold mb-8">Atmospheric Analysis</h3>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-emerald-50 rounded-2xl">
+                <div className="flex items-center gap-3">
+                  <span className="h-8 w-8 shrink-0 rounded-full bg-white text-[#1f8f4d] flex items-center justify-center">
+                    <Gauge className="h-4 w-4" />
+                  </span>
+                  <span className="text-sm font-medium">Barometric Pressure</span>
+                </div>
+                <span className="text-base font-bold">{weather?.main?.pressure ?? "--"} hPa</span>
               </div>
-              <div className="grid grid-cols-3 gap-2 mt-4">
-                {healthMetrics.map((metric, index) => (
-                  <div key={index} className="text-center">
-                    <div className="w-3 h-3 rounded-full mx-auto mb-1" style={{ backgroundColor: metric.color }}></div>
-                    <div className="text-xs text-muted-foreground">{metric.name}</div>
-                    <div className="text-sm font-semibold">{Math.round(metric.value)}%</div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
 
-        
-
-        {air && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Detailed Air Quality Analysis</CardTitle>
-              <p className="text-sm text-muted-foreground">Pollutant levels and health implications</p>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {air.co && (
-                  <div className="text-center p-4 bg-muted rounded-lg">
-                    <div className="text-2xl font-bold text-primary">{air.co.toFixed(1)}</div>
-                    <div className="text-sm font-medium">Carbon Monoxide</div>
-                    <div className="text-xs text-muted-foreground">μg/m³</div>
-                    <div className="text-xs mt-1 text-muted-foreground">
-                      {air.co > 10000 ? "High - Avoid prolonged exposure" : "Normal levels"}
-                    </div>
-                  </div>
-                )}
-                {air.no2 && (
-                  <div className="text-center p-4 bg-muted rounded-lg">
-                    <div className="text-2xl font-bold text-primary">{air.no2.toFixed(1)}</div>
-                    <div className="text-sm font-medium">Nitrogen Dioxide</div>
-                    <div className="text-xs text-muted-foreground">μg/m³</div>
-                    <div className="text-xs mt-1 text-muted-foreground">
-                      {air.no2 > 200 ? "High - May irritate airways" : "Acceptable levels"}
-                    </div>
-                  </div>
-                )}
-                {air.o3 && (
-                  <div className="text-center p-4 bg-muted rounded-lg">
-                    <div className="text-2xl font-bold text-primary">{air.o3.toFixed(1)}</div>
-                    <div className="text-sm font-medium">Ozone</div>
-                    <div className="text-xs text-muted-foreground">μg/m³</div>
-                    <div className="text-xs mt-1 text-muted-foreground">
-                      {air.o3 > 180 ? "High - Limit outdoor exercise" : "Safe levels"}
-                    </div>
-                  </div>
-                )}
-                {air.pm2_5 && (
-                  <div className="text-center p-4 bg-muted rounded-lg">
-                    <div className="text-2xl font-bold text-primary">{air.pm2_5.toFixed(1)}</div>
-                    <div className="text-sm font-medium">Fine Particles</div>
-                    <div className="text-xs text-muted-foreground">PM2.5 μg/m³</div>
-                    <div className="text-xs mt-1 text-muted-foreground">
-                      {air.pm2_5 > 25 ? "High - Use air purifier indoors" : "Good air quality"}
-                    </div>
-                  </div>
-                )}
+              <div className="flex items-center justify-between p-4 bg-emerald-50 rounded-2xl">
+                <div className="flex items-center gap-3">
+                  <span className="h-8 w-8 shrink-0 rounded-full bg-white text-[#1f8f4d] flex items-center justify-center">
+                    <Eye className="h-4 w-4" />
+                  </span>
+                  <span className="text-sm font-medium">Visibility</span>
+                </div>
+                <span className="text-base font-bold">
+                  {typeof weather?.visibility === "number" ? `${(weather.visibility / 1000).toFixed(1)} km` : "--"}
+                </span>
               </div>
-            </CardContent>
-          </Card>
-        )}
+
+              <div className="flex items-center justify-between p-4 bg-emerald-50 rounded-2xl">
+                <div className="flex items-center gap-3">
+                  <span className="h-8 w-8 shrink-0 rounded-full bg-white text-[#1f8f4d] flex items-center justify-center">
+                    <Wind className="h-4 w-4" />
+                  </span>
+                  <span className="text-sm font-medium">Wind Velocity</span>
+                </div>
+                <span className="text-base font-bold">{weather?.wind?.speed ?? "--"} m/s</span>
+              </div>
+
+              <div className="flex items-center justify-between p-4 bg-emerald-50 rounded-2xl">
+                <div className="flex items-center gap-3">
+                  <span className="h-8 w-8 shrink-0 rounded-full bg-white text-[#1f8f4d] flex items-center justify-center">
+                    <Thermometer className="h-4 w-4" />
+                  </span>
+                  <span className="text-sm font-medium">Dew Point</span>
+                </div>
+                <span className="text-base font-bold">{weather?.main?.temp_min ? `${Math.round(weather.main.temp_min)}°C` : "--"}</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {air?.co != null && (
+            <div className="p-4 rounded-2xl border border-emerald-100 bg-white/70 backdrop-blur-md">
+              <p className="text-xs uppercase tracking-wide text-[#3d4a3f]">Carbon Monoxide</p>
+              <p className="text-2xl font-bold mt-2">{air.co.toFixed(1)}</p>
+              <p className="text-xs text-[#3d4a3f] mt-1">ug/m3</p>
+            </div>
+          )}
+          {air?.no2 != null && (
+            <div className="p-4 rounded-2xl border border-emerald-100 bg-white/70 backdrop-blur-md">
+              <p className="text-xs uppercase tracking-wide text-[#3d4a3f]">Nitrogen Dioxide</p>
+              <p className="text-2xl font-bold mt-2">{air.no2.toFixed(1)}</p>
+              <p className="text-xs text-[#3d4a3f] mt-1">ug/m3</p>
+            </div>
+          )}
+          {air?.o3 != null && (
+            <div className="p-4 rounded-2xl border border-emerald-100 bg-white/70 backdrop-blur-md">
+              <p className="text-xs uppercase tracking-wide text-[#3d4a3f]">Ozone</p>
+              <p className="text-2xl font-bold mt-2">{air.o3.toFixed(1)}</p>
+              <p className="text-xs text-[#3d4a3f] mt-1">ug/m3</p>
+            </div>
+          )}
+          {air?.pm2_5 != null && (
+            <div className="p-4 rounded-2xl border border-emerald-100 bg-white/70 backdrop-blur-md">
+              <p className="text-xs uppercase tracking-wide text-[#3d4a3f]">PM2.5</p>
+              <p className="text-2xl font-bold mt-2">{air.pm2_5.toFixed(1)}</p>
+              <p className="text-xs text-[#3d4a3f] mt-1">ug/m3</p>
+            </div>
+          )}
+        </section>
       </div>
+
+      <button className="fixed bottom-6 right-6 h-14 w-14 bg-[#006d37] text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all z-20">
+        <MessageCircle className="h-6 w-6" />
+      </button>
     </div>
-  )
+  );
 }
