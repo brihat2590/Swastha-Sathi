@@ -8,13 +8,14 @@ import {
   Activity,
   Bolt,
   CalendarDays,
+  ChevronLeft,
   CircleCheckBig,
   Droplets,
-  Heart,
   Info,
   Moon,
   Utensils,
 } from "lucide-react";
+import Link from "next/link";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-update-inter" });
 const manrope = Manrope({
@@ -34,7 +35,6 @@ export default function HealthStatusPage() {
     caloriesBurnt: "650",
     sleepHours: "7.5",
     waterIntake: "2.8",
-    restingHeartRate: "64",
   });
 
   const [loading, setLoading] = useState(false);
@@ -71,10 +71,6 @@ export default function HealthStatusPage() {
   const proteinValue = Number(formData.proteinIntake) || 0;
   const carbValue = Number(formData.carbIntake) || 0;
   const fatValue = Number(formData.fatIntake) || 0;
-
-  const proteinPercent = Math.min((proteinValue / 250) * 100, 100);
-  const carbPercent = Math.min((carbValue / 400) * 100, 100);
-  const fatPercent = Math.min((fatValue / 120) * 100, 100);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,7 +121,6 @@ export default function HealthStatusPage() {
           caloriesBurnt: "650",
           sleepHours: "7.5",
           waterIntake: "2.8",
-          restingHeartRate: "64",
         });
       } else {
         toast.error(data.error || "Failed to save record");
@@ -141,13 +136,18 @@ export default function HealthStatusPage() {
     <div className={`${inter.variable} ${manrope.variable} min-h-screen bg-[#f8faf8] text-[#191c1b]`}>
         <main className="mx-auto max-w-[1320px] px-4 pb-12 pt-10 sm:px-8 lg:px-12">
           <div className="mb-12 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-            <div>
+            <div >
+
+              {/* <div className=""><ChevronLeft/></div> */}
               <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#006d37]">
                 Clinical Sanctuary
               </p>
-              <h1 className="font-[var(--font-update-manrope)] text-4xl font-bold tracking-tight text-[#191c1b]">
+              <div className="flex items-center pl-0 ">
+                <Link href={"/dashboard"}><ChevronLeft/></Link>
+                <h1 className="font-[var(--font-update-manrope)] text-4xl font-bold tracking-tight text-[#191c1b]">
                 Logging for {headingDate}
               </h1>
+              </div>
               <p className="mt-2 max-w-xl text-base text-[#3d4a3f]">
                 Update your daily vitals to receive precision health insights and
                 personalized recommendations from our AI sanctuary.
@@ -252,23 +252,19 @@ export default function HealthStatusPage() {
                     <label className="text-sm font-semibold text-[#191c1b]">Carbohydrates</label>
                     <span className="text-sm font-bold text-[#006d37]">{carbValue}g</span>
                   </div>
-                  <div className="relative">
-                    <div className="h-2 w-full overflow-hidden rounded-full bg-[#eceeec]">
-                      <div
-                        className="h-full rounded-full bg-[#27ae60]"
-                        style={{ width: `${carbPercent}%` }}
-                      />
-                    </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="400"
-                      step="1"
-                      name="carbIntake"
-                      value={carbValue}
-                      onChange={handleChange}
-                      className="absolute -mt-6 h-2 w-full cursor-pointer opacity-0"
-                    />
+                  <input
+                    type="range"
+                    min="0"
+                    max="400"
+                    step="1"
+                    name="carbIntake"
+                    value={formData.carbIntake}
+                    onChange={handleChange}
+                    className="h-2 w-full cursor-pointer appearance-none rounded-full bg-[#e3e8e3] accent-[#27ae60]"
+                  />
+                  <div className="mt-2 flex items-center justify-between text-xs font-medium text-[#6a776f]">
+                    <span>0g</span>
+                    <span>400g</span>
                   </div>
                 </div>
 
@@ -277,23 +273,19 @@ export default function HealthStatusPage() {
                     <label className="text-sm font-semibold text-[#191c1b]">Protein</label>
                     <span className="text-sm font-bold text-[#40627b]">{proteinValue}g</span>
                   </div>
-                  <div className="relative">
-                    <div className="h-2 w-full overflow-hidden rounded-full bg-[#eceeec]">
-                      <div
-                        className="h-full rounded-full bg-[#40627b]"
-                        style={{ width: `${proteinPercent}%` }}
-                      />
-                    </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="250"
-                      step="1"
-                      name="proteinIntake"
-                      value={proteinValue}
-                      onChange={handleChange}
-                      className="absolute -mt-6 h-2 w-full cursor-pointer opacity-0"
-                    />
+                  <input
+                    type="range"
+                    min="0"
+                    max="250"
+                    step="1"
+                    name="proteinIntake"
+                    value={formData.proteinIntake}
+                    onChange={handleChange}
+                    className="h-2 w-full cursor-pointer appearance-none rounded-full bg-[#e3e8e3] accent-[#40627b]"
+                  />
+                  <div className="mt-2 flex items-center justify-between text-xs font-medium text-[#6a776f]">
+                    <span>0g</span>
+                    <span>250g</span>
                   </div>
                 </div>
 
@@ -302,23 +294,19 @@ export default function HealthStatusPage() {
                     <label className="text-sm font-semibold text-[#191c1b]">Healthy Fats</label>
                     <span className="text-sm font-bold text-[#006d37]">{fatValue}g</span>
                   </div>
-                  <div className="relative">
-                    <div className="h-2 w-full overflow-hidden rounded-full bg-[#eceeec]">
-                      <div
-                        className="h-full rounded-full bg-[#006d37]"
-                        style={{ width: `${fatPercent}%` }}
-                      />
-                    </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="120"
-                      step="1"
-                      name="fatIntake"
-                      value={fatValue}
-                      onChange={handleChange}
-                      className="absolute -mt-6 h-2 w-full cursor-pointer opacity-0"
-                    />
+                  <input
+                    type="range"
+                    min="0"
+                    max="120"
+                    step="1"
+                    name="fatIntake"
+                    value={formData.fatIntake}
+                    onChange={handleChange}
+                    className="h-2 w-full cursor-pointer appearance-none rounded-full bg-[#e3e8e3] accent-[#2a4f40]"
+                  />
+                  <div className="mt-2 flex items-center justify-between text-xs font-medium text-[#6a776f]">
+                    <span>0g</span>
+                    <span>120g</span>
                   </div>
                 </div>
               </div>
@@ -394,29 +382,6 @@ export default function HealthStatusPage() {
                     </div>
                   </div>
 
-                  <div className="rounded-2xl bg-[#f2f4f2] p-6 transition hover:bg-[#e1e3e1]">
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-red-500 shadow-sm">
-                        <Heart size={18} />
-                      </div>
-                      <div className="flex-1">
-                        <label className="mb-1 block text-xs font-bold uppercase text-[#3d4a3f]">
-                          Resting Heart Rate
-                        </label>
-                        <div className="flex items-end gap-2">
-                          <input
-                            type="number"
-                            step="1"
-                            name="restingHeartRate"
-                            value={formData.restingHeartRate}
-                            onChange={handleChange}
-                            className="w-16 border-none bg-transparent p-0 text-3xl font-bold text-[#191c1b] outline-none"
-                          />
-                          <span className="mb-1 text-sm text-[#3d4a3f]">BPM</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
                 </div>
               </section>
 

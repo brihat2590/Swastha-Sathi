@@ -65,11 +65,11 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto p-6">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center space-y-4">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-            <p className="text-muted-foreground">Loading your health dashboard...</p>
+      <div className="min-h-screen bg-[radial-gradient(circle_at_18%_0%,#edf5f0_0%,#f7f9f8_40%,#f6f7f8_100%)] px-4 py-10 md:px-8">
+        <div className="mx-auto flex min-h-[420px] max-w-7xl items-center justify-center">
+          <div className="space-y-4 text-center">
+            <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-[#2a4f40] border-t-transparent" />
+            <p className="font-medium text-[#4f5f57]">Loading your health dashboard...</p>
           </div>
         </div>
       </div>
@@ -78,14 +78,14 @@ export default function DashboardPage() {
 
   if (error) {
     return (
-      <div className="container mx-auto p-6">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center space-y-4">
-            <div className="text-destructive text-lg font-semibold">Error loading dashboard</div>
-            <p className="text-muted-foreground">{error}</p>
+      <div className="min-h-screen bg-[radial-gradient(circle_at_18%_0%,#edf5f0_0%,#f7f9f8_40%,#f6f7f8_100%)] px-4 py-10 md:px-8">
+        <div className="mx-auto flex min-h-[420px] max-w-7xl items-center justify-center">
+          <div className="w-full max-w-md space-y-4 rounded-3xl border border-slate-200 bg-white/90 p-8 text-center shadow-lg shadow-slate-300/20">
+            <div className="text-lg font-semibold text-[#b63e3e]">Error loading dashboard</div>
+            <p className="text-[#5a665f]">{error}</p>
             <button
               onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+              className="rounded-full bg-[#2a4f40] px-5 py-2 text-white transition-colors hover:bg-[#1f3e34]"
             >
               Try Again
             </button>
@@ -97,9 +97,9 @@ export default function DashboardPage() {
 
   if (!dashboardData) {
     return (
-      <div className="container mx-auto p-6">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <p className="text-muted-foreground">No dashboard data available</p>
+      <div className="min-h-screen bg-[radial-gradient(circle_at_18%_0%,#edf5f0_0%,#f7f9f8_40%,#f6f7f8_100%)] px-4 py-10 md:px-8">
+        <div className="mx-auto flex min-h-[420px] max-w-7xl items-center justify-center">
+          <p className="text-[#5a665f]">No dashboard data available</p>
         </div>
       </div>
     )
