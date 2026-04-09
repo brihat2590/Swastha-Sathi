@@ -82,26 +82,29 @@ export default function Profile() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto mt-10 p-4">
-      <Card className="shadow-lg">
-        <CardHeader>
-          <CardTitle className="text-xl">Update Profile</CardTitle>
+    <div className="max-w-5xl mx-auto">
+      <Card className="rounded-3xl border border-slate-200/90 bg-white/80 backdrop-blur-md shadow-xl shadow-slate-300/20">
+        <CardHeader className="border-b border-slate-200/80 pb-5">
+          <CardTitle className="text-xl md:text-2xl font-bold tracking-tight text-[#191c1b]">
+            Update Profile
+          </CardTitle>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+        <CardContent className="pt-6">
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
-              <Label htmlFor="age">Age</Label>
+              <Label className="text-[#33423a]" htmlFor="age">Age</Label>
               <Input
                 type="number"
                 id="age"
                 name="age"
                 value={formData.age}
                 onChange={handleChange}
+                className="mt-2 rounded-xl border-slate-200 bg-white/90 focus-visible:ring-emerald-400"
               />
             </div>
 
             <div>
-              <Label htmlFor="heightCm">Height (cm)</Label>
+              <Label className="text-[#33423a]" htmlFor="heightCm">Height (cm)</Label>
               <Input
                 type="number"
                 step="0.01"
@@ -109,11 +112,12 @@ export default function Profile() {
                 name="heightCm"
                 value={formData.heightCm}
                 onChange={handleChange}
+                className="mt-2 rounded-xl border-slate-200 bg-white/90 focus-visible:ring-emerald-400"
               />
             </div>
 
             <div>
-              <Label htmlFor="weightKg">Weight (kg)</Label>
+              <Label className="text-[#33423a]" htmlFor="weightKg">Weight (kg)</Label>
               <Input
                 type="number"
                 step="0.01"
@@ -121,15 +125,16 @@ export default function Profile() {
                 name="weightKg"
                 value={formData.weightKg}
                 onChange={handleChange}
+                className="mt-2 rounded-xl border-slate-200 bg-white/90 focus-visible:ring-emerald-400"
               />
             </div>
 
             <div>
-              <Label htmlFor="gender">Gender</Label>
+              <Label className="text-[#33423a]" htmlFor="gender">Gender</Label>
               <select
                 id="gender"
                 name="gender"
-                className="w-full border rounded-md p-2"
+                className="mt-2 w-full rounded-xl border border-slate-200 bg-white/90 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-400"
                 value={formData.gender}
                 onChange={handleChange}
               >
@@ -141,26 +146,32 @@ export default function Profile() {
             </div>
 
             <div>
-              <Label htmlFor="bloodGroup">Blood Group</Label>
+              <Label className="text-[#33423a]" htmlFor="bloodGroup">Blood Group</Label>
               <Input
                 id="bloodGroup"
                 name="bloodGroup"
                 value={formData.bloodGroup}
                 onChange={handleChange}
+                className="mt-2 rounded-xl border-slate-200 bg-white/90 focus-visible:ring-emerald-400"
               />
             </div>
 
-            <div>
-              <Label htmlFor="allergies">Allergies</Label>
+            <div className="md:col-span-2">
+              <Label className="text-[#33423a]" htmlFor="allergies">Allergies</Label>
               <Input
                 id="allergies"
                 name="allergies"
                 value={formData.allergies}
                 onChange={handleChange}
+                className="mt-2 rounded-xl border-slate-200 bg-white/90 focus-visible:ring-emerald-400"
               />
             </div>
 
-            <Button type="submit" disabled={loading} className="w-full">
+            <Button
+              type="submit"
+              disabled={loading}
+              className="md:col-span-2 h-11 w-full rounded-xl bg-[#2a4f40] text-white hover:bg-[#1f3e34]"
+            >
               {loading ? "Updating..." : "Update Profile"}
             </Button>
           </form>
