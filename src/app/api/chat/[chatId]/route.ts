@@ -5,6 +5,10 @@ import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { mem0Client } from "@/lib/mem0";
 
+// IN-MEMORY CACHE FOR CONTEXT
+const contextCache = new Map<string, { memoryContext: string; userContextText: string; timestamp: number }>();
+const CACHE_TTL = 1000 * 60 * 30; // 30 minutes
+
 // Helper: Fetch user context
 async function fetchUserContext(userId: string) {
   const baseUrl =
@@ -196,37 +200,41 @@ export async function POST(
     }
 
     // =======================
-    // 🔥 MEM0 RETRIEVAL
+    // �️ CACHED SESSIONS / MEM0 RETRIEVAL
     // =======================
+    const cacheKey = `${userId}-${chatId}`;
+    const now = Date.now();
+    let cachedContext = contextCache.get(cacheKey);
+
     let memoryContext = "";
-
-    if (mem0Client) {
-      try {
-        const memories = await mem0Client.search("user", {
-          user_id: userId,
-          limit: 10,
-          query: message,
-        });
-
-        memoryContext =
-          memories
-            ?.map((m: any) => m.memory || m.content || "")
-            .join("\n") || "";
-      } catch (err) {
-        console.warn("Mem0 retrieval failed:", err);
-      }
-    }
-
-    // =======================
-    // 📊 USER CONTEXT
-    // =======================
     let userContextText = "";
 
-    try {
-      const userContext = await fetchUserContext(userId);
+    if (cachedContext && (now - cachedContext.timestamp < CACHE_TTL)) {
+      memoryContext = cachedContext.memoryContext;
+      userContextText = cachedContext.userContextText;
+    } else {
+      if (mem0Client) {
+        try {
+          const memories = await mem0Client.search("user", {
+            user_id: userId,
+            limit: 10,
+            query: message,
+          });
 
-      if (userContext) {
-        userContextText = `
+          memoryContext =
+            memories
+              ?.map((m: any) => m.memory || m.content || "")
+              .join("\n") || "";
+        } catch (err) {
+          console.warn("Mem0 retrieval failed:", err);
+        }
+      }
+
+      try {
+        const userContext = await fetchUserContext(userId);
+
+        if (userContext) {
+          userContextText = `
 User Profile:
 - Age: ${userContext.age}
 - Weight: ${userContext.weightKg}kg
@@ -237,9 +245,17 @@ User Profile:
 - Water: ${userContext.waterIntake}L
 - Allergies: ${userContext.allergies || "None"}
 `;
+        }
+      } catch (err) {
+        console.warn("User context fetch failed:", err);
       }
-    } catch (err) {
-      console.warn("User context fetch failed:", err);
+
+      // Store in memory cache
+      contextCache.set(cacheKey, {
+        memoryContext,
+        userContextText,
+        timestamp: now,
+      });
     }
 
     // =======================

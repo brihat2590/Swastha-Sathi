@@ -337,10 +337,13 @@ export default function ChatInterface() {
     recognitionRef.current = rec;
   }, []);
 
-  // Initial scroll on message change
+  // Scroll on message change
   useEffect(() => {
-    scrollToBottom("smooth");
-  }, [messages.length, scrollToBottom]);
+    const timer = setTimeout(() => {
+      scrollToBottom("smooth");
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [messages, scrollToBottom]);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -447,7 +450,8 @@ export default function ChatInterface() {
       const full = data?.response ?? "Sorry, no response received.";
       setMessages((prev) =>
         prev.map((m) => (m.id === assistantId ? { ...m, content: full, isStreaming: false } : m))
-      );
+        );
+        requestAnimationFrame(() => scrollToBottom("smooth"));
 
       await fetchChats();
     } catch (err: any) {

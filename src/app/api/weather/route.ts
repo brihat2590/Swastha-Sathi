@@ -27,10 +27,10 @@ export async function POST(request: NextRequest) {
       `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric`,
     )
 
-    const weather = await weatherResponse.json()
-    const air = await airResponse.json()
-    const uv = await uvResponse.json()
-    const forecast = await forecastResponse.json()
+    const weather = weatherResponse.ok ? await weatherResponse.json().catch(() => null) : null
+    const air = airResponse.ok ? await airResponse.json().catch(() => null) : null
+    const uv = uvResponse.ok ? await uvResponse.json().catch(() => null) : null
+    const forecast = forecastResponse.ok ? await forecastResponse.json().catch(() => null) : null
 
     return NextResponse.json({ weather, air, uv, forecast })
   } catch (error) {
