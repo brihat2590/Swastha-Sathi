@@ -7,7 +7,7 @@ type AppShellProps = {
   children: React.ReactNode;
 };
 
-const HIDE_NAVBAR_ROUTES = new Set(["/updateHealth"]);
+const HIDE_NAVBAR_ROUTES = new Set(["/", "/updateHealth"]);
 
 export default function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();

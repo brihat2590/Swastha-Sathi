@@ -16,7 +16,7 @@ export default function LandingPage() {
         {/* CTA Buttons */}
         <div className="mt-8 flex items-center justify-center gap-4">
           <Link
-            href="/sign-in"
+            href="/login"
             className="px-6 py-3 bg-indigo-600 text-white text-base font-medium rounded-md shadow hover:bg-indigo-700 transition"
           >
             Get Started

@@ -11,7 +11,7 @@ export default function ProtectedLayoutClient({ children }: { children: ReactNod
 
   useEffect(() => {
     if (!isPending && !session && !error) {
-      router.push('/sign-in');
+      router.push('/login');
     }
   }, [isPending, session, error, router]);
 

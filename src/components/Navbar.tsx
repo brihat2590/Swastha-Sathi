@@ -145,7 +145,7 @@ export default function Navbar() {
             </div>
           ) : (
             <Link
-              href="/sign-in"
+              href="/login"
               className="bg-indigo-600 text-white px-4 py-2 rounded-md font-medium hover:bg-indigo-700 transition hidden sm:inline"
             >
               Get started
@@ -206,7 +206,7 @@ export default function Navbar() {
                   <Link className="text-purple-600 underline" href="/contact" onClick={() => setMobileOpen(false)}>
                     Contact sales
                   </Link>
-                  <Link className="text-purple-600 underline" href="/sign-in" onClick={() => setMobileOpen(false)}>
+                  <Link className="text-purple-600 underline" href="/login" onClick={() => setMobileOpen(false)}>
                     Get started
                   </Link>
                 </>

@@ -31,7 +31,7 @@ export default function SignUpPage() {
         email,
         password,
         name,
-        callbackURL: "/sign-in",
+        callbackURL: "/login",
       });
 
       if (error) {
@@ -40,7 +40,7 @@ export default function SignUpPage() {
       }
 
       toast.success("Account created. Please log in.", { id: toastId });
-      router.push("/sign-in");
+      router.push("/login");
     } catch {
       toast.error("Unable to create account right now. Please try again.", { id: toastId });
     } finally {
@@ -184,8 +184,8 @@ export default function SignUpPage() {
 
         <p className="text-center text-sm text-gray-500 mt-6">
           Already have an account?{" "}
-          <a href="/sign-in" className="text-indigo-600 hover:underline">
-            Sign in
+          <a href="/login" className="text-indigo-600 hover:underline">
+              Log in
           </a>
         </p>
       </div>
